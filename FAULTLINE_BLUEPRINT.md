@@ -329,8 +329,4 @@ Record the terminal at 1.5× with a seeded run you've rehearsed — determinism 
 
 ---
 
-## 15. On "100% Win Rate" — the honest paragraph
-
-No blueprint can guarantee a win; nine thousand teams entered and judging has taste in it. What a blueprint *can* do is remove every controllable way to lose: novelty that survives a judge's five-minute Google (the prior-art table is your armor), a demo number that moves on camera (the survival curve), a meta-story aligned with the sponsor's product (Codex hardening agents, headlessly), reproducibility a judge can verify in one command, and a finished, honest, well-documented artifact submitted early. Most hackathon projects lose on execution and legibility, not ideas. This plan is engineered so the only remaining variable is taste — and the taste of these judges (Head of Product & Platform, Codex team) runs exactly toward developer tooling that makes agents production-ready.
-
 Now go break something. Then fix it. Automatically.
