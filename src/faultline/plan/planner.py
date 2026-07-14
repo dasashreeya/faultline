@@ -25,7 +25,7 @@ SEVERITY_ORDER = {"F5": 0, "F3": 1, "F2": 2, "F1": 3, "F4": 4}
 
 
 def load_plan(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def save_plan(plan: dict[str, Any], path: Path) -> None:

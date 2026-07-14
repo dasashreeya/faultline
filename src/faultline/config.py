@@ -32,7 +32,7 @@ class Config:
 
 
 def load_config(root: Path) -> Config:
-    raw: dict[str, Any] = yaml.safe_load((root / "faultline.yaml").read_text())
+    raw: dict[str, Any] = yaml.safe_load((root / "faultline.yaml").read_text(encoding="utf-8"))
     target, judge, harden = raw["target"], raw.get("judge", {}), raw.get("harden", {})
     return Config(
         root=root,
@@ -53,7 +53,7 @@ def load_config(root: Path) -> Config:
 
 
 def load_scenarios(path: Path) -> list[dict]:
-    return yaml.safe_load(path.read_text())["scenarios"]
+    return yaml.safe_load(path.read_text(encoding="utf-8"))["scenarios"]
 
 
 def resolve(entrypoint: str):

@@ -9,6 +9,17 @@ from rich.console import Console
 from rich.table import Table
 
 app = typer.Typer(no_args_is_help=True, help="Chaos engineering that fixes what it breaks.")
+
+# Windows consoles default to a legacy codepage (cp1252) that cannot encode
+# the emoji rich renders for :white_check_mark:/:skull: — reconfigure stdout
+# to UTF-8 so `faultline break`/`harden` don't crash on a stock Windows shell.
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
 console = Console()
 
 PathOpt = typer.Option(".", "--path", help="Directory containing faultline.yaml")
@@ -202,7 +213,7 @@ def report(path: Path = PathOpt) -> None:
 
     cfg = _load(path)
     out = cfg.state_dir / "report.html"
-    out.write_text(render_report(Ledger(cfg.state_dir / "ledger.sqlite3")))
+    out.write_text(render_report(Ledger(cfg.state_dir / "ledger.sqlite3")), encoding="utf-8")
     console.print(f"report → [bold]{out}[/bold]")
 
 

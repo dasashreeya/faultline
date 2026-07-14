@@ -19,7 +19,11 @@ from faultline.run.gauntlet import run_gauntlet  # noqa: E402
 @pytest.fixture()
 def cfg(tmp_path):
     root = tmp_path / "support_bot"
-    shutil.copytree(REPO / "examples" / "support_bot", root)
+    shutil.copytree(
+        REPO / "examples" / "support_bot",
+        root,
+        ignore=shutil.ignore_patterns(".faultline", "__pycache__"),
+    )
     c = load_config(root)
     assert c.judge_mode == "detectors"  # sandbox default: fully offline
     return c

@@ -18,7 +18,9 @@ CODEX_TIMEOUT_S = 900
 
 
 def _prompt_template() -> Template:
-    text = (resources.files("faultline.harden") / "prompts" / "hardener_prompt.md").read_text()
+    text = (resources.files("faultline.harden") / "prompts" / "hardener_prompt.md").read_text(
+        encoding="utf-8"
+    )
     return Template(text)
 
 
@@ -30,7 +32,7 @@ def _schema_path(cfg: Config) -> Path:
     """Materialize the patch_result schema next to the ledger so codex can read it."""
     src = resources.files("faultline.harden") / "patch_result.schema.json"
     dst = cfg.state_dir / "patch_result.schema.json"
-    dst.write_text(src.read_text())
+    dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     return dst
 
 
@@ -58,9 +60,11 @@ def run_codex(cfg: Config, dossier: dict) -> dict | None:
     except subprocess.TimeoutExpired:
         return None
     if not out_file.exists():
-        (cfg.state_dir / "codex_last_error.log").write_text(proc.stdout + proc.stderr)
+        (cfg.state_dir / "codex_last_error.log").write_text(
+            proc.stdout + proc.stderr, encoding="utf-8"
+        )
         return None
     try:
-        return json.loads(out_file.read_text())
+        return json.loads(out_file.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return None
