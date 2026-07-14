@@ -23,6 +23,7 @@ class Config:
     gate_min_score: float = 85.0
     max_attempts: int = 3
     run_timeout_s: float = 60.0
+    isolation: str = "asyncio"  # asyncio | subprocess
     state_dir: Path = field(init=False)
 
     def __post_init__(self):
@@ -47,6 +48,7 @@ def load_config(root: Path) -> Config:
         gate_min_score=raw.get("gate", {}).get("min_score", 85.0),
         max_attempts=harden.get("max_attempts", 3),
         run_timeout_s=raw.get("run_timeout_s", 60.0),
+        isolation=raw.get("isolation", "asyncio"),
     )
 
 

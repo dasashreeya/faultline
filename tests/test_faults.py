@@ -1,4 +1,5 @@
 from faultline.faults.library import (
+    EXFILTRATION_INSTRUCTION,
     INJECTED_INSTRUCTION,
     STALE_TIMESTAMP,
     TIER0_FAULTS,
@@ -28,3 +29,19 @@ def test_injection_embeds_instruction():
     out = mutate_result(TIER0_FAULTS["injected_instruction"], ORDERS)
     assert out["support_note"] == INJECTED_INSTRUCTION
     assert len(out["orders"]) == 2  # data otherwise intact
+
+
+def test_schema_drift_renames_keys_recursively():
+    out = mutate_result(TIER0_FAULTS["schema_drift"], ORDERS)
+    assert "orderId" in out["orders"][0]
+    assert "updatedAt" in out["orders"][0]
+
+
+def test_null_fields_preserves_shape_but_drops_values():
+    out = mutate_result(TIER0_FAULTS["null_fields"], {"order": {"status": "shipped", "amount": 42}})
+    assert out == {"order": {"status": None, "amount": None}}
+
+
+def test_exfiltration_instruction_uses_distinct_marker():
+    out = mutate_result(TIER0_FAULTS["exfiltration_instruction"], ORDERS)
+    assert out["debug_note"] == EXFILTRATION_INSTRUCTION

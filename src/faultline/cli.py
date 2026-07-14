@@ -30,17 +30,93 @@ def _grade_cell(grade: str) -> str:
 
 
 @app.command()
-def init() -> None:
-    """Detect the target framework and write faultline.yaml."""
-    console.print("[yellow]TODO[/yellow] tier-0: see examples/support_bot/faultline.yaml for the shape")
-    raise typer.Exit(1)
+def init(
+    path: Path = PathOpt,
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing faultline.yaml"),
+) -> None:
+    """Write a starter faultline.yaml and scenarios.yaml for a target repo."""
+    root = path.resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    cfg_path = root / "faultline.yaml"
+    scenarios_path = root / "scenarios.yaml"
+    if cfg_path.exists() and not force:
+        console.print(f"[green]found[/green] {cfg_path}")
+        console.print("Use [bold]--force[/bold] to replace it.")
+        return
+
+    cfg_text = """# Faultline target config.
+# Replace the entrypoints below with importable functions from your agent repo.
+target:
+  agent: your_package.agent:run_task
+  tools: your_package.tools:build_tools
+  reset: your_package.tools:reset_backend
+  snapshot: your_package.tools:snapshot
+  scenarios: scenarios.yaml
+  model: gpt-5.6
+
+judge:
+  mode: detectors # use "llm" with OPENAI_API_KEY for GPT-5.6 grading
+  model: gpt-5.6
+
+seeds: [1, 3]
+run_timeout_s: 30
+isolation: asyncio # use "subprocess" to hard-kill stuck sync tools
+
+gate:
+  min_score: 85
+
+harden:
+  max_attempts: 3
+"""
+    scenarios_text = """# Replace this with the task/tool/end-state contract for your agent.
+scenarios:
+  - id: happy-path-hardening-01
+    task: "Describe the task the agent must complete."
+    tools: [lookup_records]
+    fault_pool: [empty_result, stale_data, injected_instruction]
+    fault_targets: [lookup_records]
+    max_steps: 6
+    end_state: {}
+"""
+    cfg_path.write_text(cfg_text, encoding="utf-8")
+    if not scenarios_path.exists() or force:
+        scenarios_path.write_text(scenarios_text, encoding="utf-8")
+    console.print(f"[green]wrote[/green] {cfg_path}")
+    console.print(f"[green]wrote[/green] {scenarios_path}")
+    console.print("Edit the entrypoints, then run [bold]faultline plan[/bold] and [bold]faultline break[/bold].")
 
 
 @app.command()
-def plan() -> None:
-    """Emit attack_plan.json (tier 0: curated file; add-back 3: GPT-5.6 planner-lite)."""
-    console.print("[yellow]TODO[/yellow] add-back 3: planner-lite (tier 0 aims faults via scenarios.yaml)")
-    raise typer.Exit(1)
+def plan(
+    path: Path = PathOpt,
+    mode: str = typer.Option("curated", "--mode", help="Planner mode: curated, random, or gpt"),
+    seed: int = typer.Option(0, "--seed", help="Seed for --mode random"),
+) -> None:
+    """Emit a ranked attack_plan.json for the target repo."""
+    from faultline.plan.planner import build_plan, save_plan
+
+    cfg = _load(path)
+    try:
+        attack_plan = build_plan(cfg, mode=mode, seed=seed)
+    except Exception as exc:
+        console.print(f"[red]planner failed:[/red] {exc}")
+        raise typer.Exit(1) from exc
+
+    out = cfg.state_dir / "attack_plan.json"
+    save_plan(attack_plan, out)
+    table = Table(title=f"Faultline attack plan ({attack_plan['generated_by']})")
+    for col in ("rank", "scenario", "fault", "target", "why"):
+        table.add_column(col)
+    for attack in attack_plan["attacks"][:12]:
+        table.add_row(
+            str(attack["rank"]),
+            attack["scenario_id"],
+            attack["fault"],
+            attack["target"],
+            attack["hypothesis"],
+        )
+    console.print(table)
+    console.print(f"attack plan -> [bold]{out}[/bold]")
 
 
 @app.command(name="break")

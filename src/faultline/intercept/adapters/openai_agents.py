@@ -61,6 +61,11 @@ def wrap_tools(
 
             if fault.kind == "raise_before":
                 time.sleep(float(fault.params.get("hang_s", 0)))
+                error = fault.params.get("error", "timeout")
+                if error == "rate_limit":
+                    raise RuntimeError(f"{name}: 429 rate limit")
+                if error == "permission":
+                    raise PermissionError(f"{name}: permission denied")
                 raise TimeoutError(f"{name} timed out")
             if fault.kind == "raise_after":
                 flap_onset.setdefault(name, step)

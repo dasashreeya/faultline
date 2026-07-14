@@ -47,3 +47,11 @@ def test_gauntlet_is_deterministic(cfg):
     g1 = [(r["scenario_id"], r["seed"], r["judge"]["grade"]) for r in recs1]
     g2 = [(r["scenario_id"], r["seed"], r["judge"]["grade"]) for r in recs2]
     assert g1 == g2
+
+
+def test_subprocess_isolation_runs_gauntlet(cfg):
+    cfg.isolation = "subprocess"
+    cfg.seeds = [1]
+    rs, records = asyncio.run(run_gauntlet(cfg, attempt=1))
+    assert len(records) == 4
+    assert 0 <= rs <= 100

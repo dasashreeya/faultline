@@ -34,7 +34,7 @@ async def evaluate_patch(
         revert_worktree(cfg)
         return False, f"golden-trace gate: {why}", prev_rs
 
-    violations = scan_patch(_git(cfg, "diff"))
+    violations = scan_patch(_git(cfg, "diff"), model=cfg.judge_model)
     if violations:
         revert_worktree(cfg)
         return False, "anti-cheat gate: " + "; ".join(violations), prev_rs

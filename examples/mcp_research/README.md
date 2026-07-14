@@ -1,3 +1,6 @@
-# mcp-research agent
+# mcp-research agent (planned MCP breadth example)
 
-ADD-BACK 8 — deferred until the tier-0 loop is green.
+This example is reserved for an MCP-backed research agent that exercises MCP
+tool-result injection and proxy-level faults.
+
+Current status: planned after the support-bot harden loop is live-verified.

@@ -1,7 +1,6 @@
 # Faultline config for the support-bot example.
-# Sandbox default: scripted naive agent + detectors-only judge — the whole
-# loop runs offline for pennies (well, for free). Flip to the commented
-# values for the real thing.
+# Sandbox default: scripted naive agent + detectors-only judge. The loop runs
+# fully offline. Flip to the commented values for the live OpenAI path.
 target:
   agent: examples.support_bot.naive_agent:run_task
   # agent: examples.support_bot.agent:run_task     # OpenAI Agents SDK (needs OPENAI_API_KEY)
@@ -15,8 +14,10 @@ judge:
   mode: detectors # llm (needs OPENAI_API_KEY)
   model: gpt-5.6
 
-seeds: [1, 3] # seed 1 draws tool_timeout, seed 3 draws tool_flapping — both F2 traps on camera
+# seed 1 draws tool_timeout, seed 3 draws tool_flapping: both F2 traps on camera.
+seeds: [1, 3]
 run_timeout_s: 30
+isolation: asyncio # switch to subprocess to hard-kill stuck sync tools
 
 gate:
   min_score: 85

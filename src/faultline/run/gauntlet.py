@@ -1,9 +1,6 @@
-"""Gauntlet runner: N scenarios × M seeds under the fault schedule.
+"""Gauntlet runner: N scenarios x M seeds under the fault schedule."""
 
-Tier 0: asyncio.wait_for + hard wall-clock kill (kills the coroutine; a sync
-tool stuck in a thread survives until process exit — ADD-BACK 5 moves each
-run into its own subprocess).
-"""
+from __future__ import annotations
 
 import asyncio
 import time
@@ -21,7 +18,8 @@ from faultline.score.resilience import resilience_score
 async def run_one(
     cfg: Config, scenario: dict, seed: int, attempt: int, schedule: dict | None = None
 ) -> dict:
-    """One faulted run. Pass schedule={'entries': []} for a fault-free (golden) run."""
+    """One faulted run. Pass schedule={'entries': []} for a fault-free golden run."""
+
     agent_fn = resolve(cfg.agent_entrypoint)
     build_tools = resolve(cfg.tools_entrypoint)
     reset_backend = resolve(cfg.reset_entrypoint)
@@ -45,7 +43,7 @@ async def run_one(
             transcript.add("exception", content="run exceeded wall-clock budget; killed")
         else:
             transcript.add("exception", content="TimeoutError: tool call timed out")
-    except Exception as exc:  # the whole point is that faulted agents blow up
+    except Exception as exc:
         transcript.add("exception", content=repr(exc))
 
     end_state = snapshot(db_path)
@@ -70,12 +68,18 @@ async def run_one(
 
 async def run_gauntlet(cfg: Config, attempt: int, on_run=None) -> tuple[float, list[dict]]:
     """Full gauntlet for one attempt. Persists runs + score; returns (RS, records)."""
+
     scenarios = load_scenarios(cfg.scenarios_path)
     ledger = Ledger(cfg.state_dir / "ledger.sqlite3")
     records = []
     for scenario in scenarios:
         for seed in cfg.seeds:
-            rec = await run_one(cfg, scenario, seed, attempt)
+            if cfg.isolation == "subprocess":
+                from faultline.run.sandbox import run_one_subprocess
+
+                rec = await run_one_subprocess(cfg, scenario, seed, attempt)
+            else:
+                rec = await run_one(cfg, scenario, seed, attempt)
             ledger.add_run(rec)
             records.append(rec)
             if on_run:

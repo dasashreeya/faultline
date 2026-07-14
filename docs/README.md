@@ -1,4 +1,6 @@
 # Docs
 
 Source of truth for scope and architecture: [`../FAULTLINE_BLUEPRINT.md`](../FAULTLINE_BLUEPRINT.md).
-Tier-0 scope = blueprint minus proxies/planner/extra agents; see root README.
+Current implementation status, submission state, and remaining live-verification
+items are tracked in [`../README.md`](../README.md) and
+[`../SUBMISSION_STATE.md`](../SUBMISSION_STATE.md).

@@ -77,8 +77,8 @@ That live path requires `OPENAI_API_KEY`.
 ## CLI Flow
 
 ```bash
-faultline init                 # TODO: generate faultline.yaml for a target repo
-faultline plan                 # TODO: GPT-5.6 planner-lite attack plan
+faultline init                 # generate faultline.yaml + starter scenarios.yaml
+faultline plan                 # ranked attack plan: curated, random, or GPT-5.6
 faultline break                # run scenarios x seeds under injected faults
 faultline harden               # Codex loop: dossier -> patch -> gate -> re-break
 faultline report               # static HTML report with curve, runs, patches
@@ -91,20 +91,20 @@ faultline gate --min-score 85  # CI-style release gate
 | --- | --- | --- | --- |
 | Core contracts | Frozen JSON contracts for fault schedules, run records, dossiers, patch results, and attack plans. | `schemas/`, `FAULTLINE_BLUEPRINT.md` | Add schema examples to docs and validate every emitted artifact in CI. |
 | Offline demo | Reproducible support-bot sandbox with scripted fragile agent, SQLite backend, four scenarios, and deterministic judge mode. | `examples/support_bot/`, `tests/test_e2e_offline.py` | Commit a sample report artifact or screenshot for judges who skim before running. |
-| Fault library | Five tier-0 LLM-native faults: timeout, flapping side effect, empty result, stale data, and injected instruction. | `src/faultline/faults/library.py` | Expand toward the full taxonomy: auth drift, rate limits, malformed JSON, partial writes, tool permission failures, and multi-step memory poison. |
+| Fault library | Thirteen faults across F1-F5, including timeout, flapping side effects, stale data, schema drift, malformed JSON, rate limits, auth failures, and prompt-injection variants. | `src/faultline/faults/library.py`, `tests/test_faults.py` | Expand toward the full 22-fault taxonomy and add intensity controls. |
 | Fault scheduler | Seeded schedule is a pure function of `(seed, scenario)`, which makes before/after hardening comparisons fair. | `src/faultline/faults/scheduler.py`, `tests/test_scheduler_determinism.py` | Add multi-fault schedules and planner-selected targets while preserving determinism. |
 | Tool interception | Tool wrapper records transcripts and injects failures below the agent framework. | `src/faultline/intercept/adapters/openai_agents.py` | Finish LLM proxy and MCP proxy add-backs for model-output and MCP-server fault injection. |
-| Runner and budgets | Async gauntlet runs every scenario/seed pair, records cost, kills over-budget runs, and stores results in SQLite. | `src/faultline/run/gauntlet.py`, `src/faultline/ledger/store.py` | Move each run into a subprocess for hard isolation of stuck sync tools. |
+| Runner and budgets | Gauntlet runs every scenario/seed pair, records cost, stores results in SQLite, and supports opt-in subprocess isolation for killable runs. | `src/faultline/run/gauntlet.py`, `src/faultline/run/sandbox.py`, `src/faultline/ledger/store.py` | Make subprocess isolation the recommended production default after more live harden testing. |
 | Deterministic judge | Detectors catch loops, budget overruns, crashes, and end-state failures without model calls. | `src/faultline/judge/detectors.py`, `src/faultline/judge/judge.py` | Calibrate the optional GPT-5.6 judge on live runs and document grade examples. |
 | Resilience Score | Weighted score and survival curve turn run outcomes into one release-gate number. | `src/faultline/score/`, `tests/test_scorer.py` | Add per-fault-class breakdown to the HTML report and README demo results. |
 | Report | Static HTML report shows survival curve, run matrix, judge reasons, and patch ledger. | `src/faultline/ledger/report/render.py` | Polish report styling and include direct links to transcripts/dossiers. |
 | Codex hardener | Builds failure dossiers, renders a hardening prompt, calls headless `codex exec`, and parses structured output. | `src/faultline/harden/` | Run a full live harden climb with Codex credits and capture before/after Resilience Score for the video. |
-| Patch gatekeeper | Accepts patches only if happy paths still pass, anti-cheat markers are absent, and score does not regress. | `src/faultline/gate/` | Replace marker-only anti-cheat with a GPT-5.6 adversarial diff audit plus allowlisted safe patterns. |
-| CLI polish | `break`, `harden`, `report`, and `gate` are implemented. | `src/faultline/cli.py`, `Makefile` | Implement `faultline init` and `faultline plan` so a judge can point Faultline at a fresh repo. |
-| Planner | Tier-0 curated planning shape exists through schema and blueprint. | `schemas/attack_plan.schema.json`, `src/faultline/plan/planner.py` | Build GPT-5.6 planner-lite: repo digest -> ranked attack plan -> scenario/fault target suggestions. |
-| GitHub Action | Action package exists as a placeholder. | `action/action.yml` | Replace the stub with a real composite action that installs Faultline and runs `faultline gate`. |
-| Tests | Unit and offline end-to-end tests cover scheduler determinism, fault mutation, detectors, scorer, and gauntlet. | `tests/` | Add live integration tests behind env flags for GPT-5.6 judge, SDK agent, and Codex hardener. |
-| Submission package | MIT license, blueprint, install commands, sample data, and offline path are present. | `LICENSE`, `README.md`, `FAULTLINE_BLUEPRINT.md` | Record demo video, add `/feedback` Codex session ID, publish/share repository, and fill Devpost fields. |
+| Patch gatekeeper | Accepts patches only if happy paths still pass, anti-cheat passes, and score does not regress. Marker anti-cheat is deterministic; GPT-5.6 audit is opt-in. | `src/faultline/gate/`, `tests/test_anticheat.py` | Live-calibrate GPT audit prompts against real Codex patches. |
+| CLI polish | `init`, `plan`, `break`, `harden`, `report`, and `gate` are implemented. | `src/faultline/cli.py`, `Makefile` | Add richer target autodetection to `init`. |
+| Planner | Offline curated/random planners and GPT-5.6 planner path are implemented over a repo digest. | `src/faultline/plan/`, `tests/test_planner.py` | Run `faultline plan --mode gpt` live and capture the plan in the demo. |
+| GitHub Action | Composite action installs Python/uv, runs Faultline, renders the report, and enforces `faultline gate`. | `action/action.yml` | Dogfood it in this repo's workflow. |
+| Tests | Unit and offline end-to-end tests cover scheduler determinism, fault mutation, detectors, scorer, planner, anti-cheat, and gauntlet. | `tests/` | Add live integration tests behind env flags for GPT-5.6 judge, SDK agent, and Codex hardener. |
+| Submission package | MIT license, blueprint, install commands, sample data, offline path, and submission state file are present. | `LICENSE`, `README.md`, `SUBMISSION_STATE.md`, `FAULTLINE_BLUEPRINT.md` | Record demo video, add `/feedback` Codex session ID, publish/share repository, and fill Devpost fields. |
 
 ## Deadline Plan
 
@@ -113,13 +113,13 @@ faultline gate --min-score 85  # CI-style release gate
 | P0 | Run clean `uv sync`, `uv run pytest -q`, and `make demo` on a fresh checkout. | Judges need a no-surprises first run. | README commands work from scratch and generate `report.html`. |
 | P0 | Run live `faultline harden` with the Codex CLI authenticated. | This is the core Build Week story: Codex fixes failures found by Faultline. | Video shows baseline RS, Codex patch attempt, accepted patch, and improved RS. |
 | P0 | Verify GPT-5.6 judge mode and OpenAI Agents SDK target. | Confirms the live OpenAI path, not only the offline sandbox. | `judge.mode: llm` produces structured grades without breaking the report. |
-| P0 | Implement `faultline init`. | Makes the tool feel real outside the bundled demo. | Running `faultline init --path some_agent_repo` writes a usable `faultline.yaml` scaffold. |
-| P0 | Replace GitHub Action stub. | Turns Faultline into a CI gate, which strengthens the developer-tools category. | A workflow can call the action and fail when RS is below threshold. |
-| P1 | Implement GPT-5.6 planner-lite. | Shows GPT-5.6 doing strategic fault selection, not just rubric grading. | `faultline plan` emits `attack_plan.json` with ranked targets and reasons. |
-| P1 | Add GPT-5.6 anti-cheat diff audit. | Prevents patches that only memorize the injected failure. | Gate rejects hard-coded marker fixes and explains why. |
+| P0 | Dogfood `faultline init` on a fresh tiny repo. | Proves the project works beyond the bundled demo. | Generated config needs only entrypoint edits before `break`. |
+| P0 | Dogfood the GitHub Action in this repository. | Turns Faultline into a visible CI gate, which strengthens the developer-tools category. | A workflow calls the action and fails when RS is below threshold. |
+| P1 | Live-run GPT-5.6 planner-lite. | Shows GPT-5.6 doing strategic fault selection, not just rubric grading. | `faultline plan --mode gpt` emits `attack_plan.json` with ranked targets and reasons. |
+| P1 | Live-run GPT-5.6 anti-cheat diff audit. | Prevents patches that only memorize the injected failure. | `FAULTLINE_ANTICHEAT=required` rejects overfit patches and explains why. |
 | P1 | Polish report output. | The report is what judges will inspect after the video. | Report includes score, curve, matrix, transcripts, dossiers, and patch verdicts. |
 | P1 | Add demo artifacts. | Reduces judging friction. | README links to sample report, sample transcript, and expected baseline score. |
-| P2 | Expand fault taxonomy beyond tier-0. | Increases product depth after the core story is locked. | At least 10-12 faults are available and grouped by class. |
+| P2 | Expand from 13 faults to the full 22-fault taxonomy. | Increases product depth after the core story is locked. | Remaining faults include memory poison, permission drift, malformed tool envelopes, and multi-fault schedules. |
 | P2 | Add MCP and LLM proxy injection. | Broadens framework coverage. | Faultline can perturb MCP tool responses and model responses, not only raw tool callables. |
 | P2 | Add a second example agent. | Proves generality beyond support workflows. | Trip planner or research MCP example runs through the same gauntlet. |
 
@@ -164,13 +164,13 @@ GPT-5.6 were used.
 | Working project | In progress | Offline gauntlet works; live harden climb still needs final verification. |
 | Category | Ready | Submit under Developer tools. |
 | Project description | Drafted | Use the pitch and workflow sections above. |
-| Demo video under 3 minutes | TODO | Show break -> report -> Codex harden -> improved report. |
+| Demo video under 3 minutes | TODO | Show plan -> break -> report -> Codex harden -> improved report. |
 | Public or shared repository | TODO | Public with MIT license, or private shared with required judging emails. |
 | README setup instructions | Ready | Quickstart above covers offline and live paths. |
 | Sample data | Ready | Support-bot SQLite backend is generated from repo-local fixtures. |
 | Codex/GPT-5.6 usage explanation | In progress | README describes intended usage; final video should show the live loop. |
-| `/feedback` Codex session ID | TODO | Add the session ID from the main build session before submission. |
-| Plugin/developer tool install notes | In progress | Add GitHub Action usage after replacing the action stub. |
+| `/feedback` Codex session ID | TODO | Add the session ID from the main build session to `SUBMISSION_STATE.md` and Devpost. |
+| Plugin/developer tool install notes | Ready | GitHub Action usage is available in `action/action.yml`. |
 
 ## Current Scope Contract
 
