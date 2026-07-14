@@ -17,23 +17,22 @@ def _rng(seed: int, scenario_id: str) -> random.Random:
 def build_schedule(scenario: dict, seed: int) -> dict:
     """Return a FaultSchedule (schemas/fault_schedule.schema.json).
 
-    `scenario` supplies `id`, `tools` (names the agent may call), and
-    `fault_pool` (fault ids allowed for this scenario, default: all tier-0).
-    Tier-0 policy: pick one fault per scenario, aimed at a pseudo-random
-    (tool, step). The planner (tier 0: curated JSON) can override `fault_pool`
-    to aim the chaos instead.
+    Scenario knobs: `fault_pool` (allowed fault ids), `fault_targets`
+    (tools to aim at, default all), `fault_step` (which call to the target
+    gets hit; default 0 = first call, so short agent runs still get bitten).
     """
     rng = _rng(seed, scenario["id"])
     pool: list[Fault] = [TIER0_FAULTS[fid] for fid in scenario.get("fault_pool", TIER0_FAULTS)]
     fault = rng.choice(sorted(pool, key=lambda f: f.id))
+    targets = sorted(scenario.get("fault_targets", scenario["tools"]))
     return {
         "scenario_id": scenario["id"],
         "seed": seed,
         "entries": [
             {
-                "step": rng.randrange(0, scenario.get("max_steps", 4)),
+                "step": int(scenario.get("fault_step", 0)),
                 "surface": "tool",
-                "target": rng.choice(sorted(scenario["tools"])),
+                "target": rng.choice(targets),
                 "fault": fault.id,
                 "params": fault.params,
             }

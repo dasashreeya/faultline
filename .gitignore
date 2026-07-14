@@ -12,8 +12,9 @@ build/
 
 # Faultline runtime artifacts
 *.sqlite3
-faultline.yaml
-attack_plan.json
+.faultline/
+/faultline.yaml
+/attack_plan.json
 reports/
 
 .env

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultline/patch_result",
+  "title": "PatchResult",
+  "description": "Passed to `codex exec --output-schema` so the loop parses results without scraping.",
+  "type": "object",
+  "required": ["summary", "strategies", "files_changed", "rationale"],
+  "properties": {
+    "summary": { "type": "string", "description": "one line, used as the conventional commit subject" },
+    "strategies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "bounded_retry_backoff",
+          "timeout",
+          "fallback_tool",
+          "response_validator",
+          "freshness_check",
+          "circuit_breaker",
+          "loop_guard",
+          "surface_failure_explicitly"
+        ]
+      },
+      "description": "the constrained repair vocabulary; anything outside it is rejected"
+    },
+    "files_changed": { "type": "array", "items": { "type": "string" } },
+    "rationale": { "type": "string", "description": "why this handles the fault CLASS, not this instance" },
+    "risks": { "type": "string" }
+  },
+  "additionalProperties": false
+}

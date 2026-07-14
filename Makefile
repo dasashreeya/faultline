@@ -7,10 +7,16 @@ test:
 	uv run pytest -q
 
 # One-command reproduce for judges (submission checklist).
-# Tier 0: break + harden + report on the support-bot with fixed seeds.
+# Runs fully offline: scripted sandbox agent + detectors-only judge.
 demo:
-	@echo "TODO(day 3): uv run faultline break && uv run faultline harden && uv run faultline report"
-	@exit 1
+	uv run faultline break --path examples/support_bot
+	uv run faultline report --path examples/support_bot
+
+# The full loop (needs `codex` CLI authed; flip judge.mode/agent in
+# examples/support_bot/faultline.yaml for the LLM judge + SDK agent).
+demo-harden:
+	uv run faultline harden --path examples/support_bot
+	uv run faultline report --path examples/support_bot
 
 lint:
 	uv run python -m compileall -q src

@@ -1,11 +1,66 @@
-"""The Hardener: codex exec loop. THE project.
+"""The Hardener: headless `codex exec` against the target repo. THE project.
 
-    codex exec --sandbox workspace-write \
-      --output-schema schemas/patch_result.schema.json \
-      "$(rendered hardener_prompt + dossier)"
-
-One branch + one conventional commit per attempt; budgeted (default 3 attempts).
-SPIKE THIS ON DAY 1 (Person B) — it is the go/no-go gate for the whole plan.
+Sandboxed workspace-write, structured output via --output-schema so the loop
+parses results without scraping. `--ignore-user-config` keeps a developer's
+personal model pin from breaking the run (auth is unaffected).
 """
 
-MAX_ATTEMPTS = 3
+import json
+import subprocess
+from importlib import resources
+from pathlib import Path
+
+from jinja2 import Template
+
+from faultline.config import Config
+
+CODEX_TIMEOUT_S = 900
+
+
+def _prompt_template() -> Template:
+    text = (resources.files("faultline.harden") / "prompts" / "hardener_prompt.md").read_text()
+    return Template(text)
+
+
+def render_prompt(dossier: dict) -> str:
+    return _prompt_template().render(**dossier)
+
+
+def _schema_path(cfg: Config) -> Path:
+    """Materialize the patch_result schema next to the ledger so codex can read it."""
+    src = resources.files("faultline.harden") / "patch_result.schema.json"
+    dst = cfg.state_dir / "patch_result.schema.json"
+    dst.write_text(src.read_text())
+    return dst
+
+
+def run_codex(cfg: Config, dossier: dict) -> dict | None:
+    """One hardening attempt. Returns the parsed PatchResult, or None on failure."""
+    out_file = cfg.state_dir / "codex_last_message.json"
+    out_file.unlink(missing_ok=True)
+    cmd = [
+        "codex",
+        "exec",
+        "-C",
+        str(cfg.root),
+        "--ignore-user-config",
+        "--sandbox",
+        "workspace-write",
+        "--skip-git-repo-check",
+        "--output-schema",
+        str(_schema_path(cfg)),
+        "-o",
+        str(out_file),
+        render_prompt(dossier),
+    ]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=CODEX_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        return None
+    if not out_file.exists():
+        (cfg.state_dir / "codex_last_error.log").write_text(proc.stdout + proc.stderr)
+        return None
+    try:
+        return json.loads(out_file.read_text())
+    except json.JSONDecodeError:
+        return None
