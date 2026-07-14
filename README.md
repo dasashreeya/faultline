@@ -2,100 +2,180 @@
 
 **Chaos engineering that fixes what it breaks.**
 
-Point Faultline at an agent codebase. It breaks the agent with LLM-native
-faults, grades *how* it fails, then unleashes Codex to harden the code and
-re-runs the gauntlet until the Resilience Score clears your gate.
+Faultline is a developer tool for testing and hardening AI agents. Point it at
+an agent codebase and it runs a deterministic chaos gauntlet: inject
+LLM-native faults, grade how the agent fails, calculate a Resilience Score, ask
+Codex to harden the code, and re-run the same gauntlet until the score clears
+the release gate.
 
-> Status: **tier-0 core working.** `break → judge → score → report → gate`
-> runs fully offline (scripted sandbox agent + deterministic detectors);
-> `harden` shells out to headless `codex exec` behind the golden-trace /
-> anti-cheat / monotone-score gatekeeper. Scope source of truth:
-> [`FAULTLINE_BLUEPRINT.md`](FAULTLINE_BLUEPRINT.md).
+Hackathon track: **Developer tools**. The project is designed for OpenAI Build
+Week: Codex is part of the product loop, the optional live judge uses GPT-5.6
+structured outputs, and the planned planner-lite add-back is scoped for GPT-5.6.
 
-## Quickstart (offline, no API keys)
+## Why This Can Win
+
+Most agent evals stop at "the model answered incorrectly." Faultline turns that
+into an engineering workflow:
+
+1. **Break** the agent with realistic failures: stale tool data, empty results,
+   flapping side effects, timeouts, and prompt injection hidden in tool output.
+2. **Judge** the run with deterministic detectors and an optional GPT-5.6 rubric
+   judge that sees the injected fault ground truth.
+3. **Score** the agent with a repeatable Resilience Score and survival curve.
+4. **Harden** the target by sending a failure dossier to headless `codex exec`.
+5. **Gate** the patch with golden traces, anti-cheat checks, and monotone score
+   improvement before accepting it.
+
+The target demo is also the product: a fragile support bot fails the gauntlet,
+Codex patches it, and Faultline proves whether the fix generalized.
+
+## Quickstart
+
+Prerequisites: Python 3.11+ and `uv`.
+
+The default demo runs fully offline: no API key, no paid calls, and no live
+agent dependency.
 
 ```bash
 uv sync
-uv run pytest -q          # includes an end-to-end offline gauntlet
-make demo                 # break + report on the support-bot → RS ~29 💀
+uv run pytest -q
+make demo
 ```
 
-The sandbox default in `examples/support_bot/faultline.yaml` uses the
-scripted naive agent and detectors-only judging, so judges can run the whole
-thing for free. Flip `target.agent` to the OpenAI Agents SDK entry and
-`judge.mode: llm` (needs `OPENAI_API_KEY`) for the real thing; `faultline
-harden` additionally needs the `codex` CLI authed.
-
-## The loop
+`make demo` runs:
 
 ```bash
-faultline init      # detect framework, write faultline.yaml
-faultline plan      # ranked attack plan (tier 0: curated JSON)
-faultline break     # gauntlet: scenarios × seeds, graded → Resilience Score
-faultline harden    # codex exec loop: patch → gate → re-break until it clears
-faultline report    # survival curve + fault matrix
-faultline gate --min-score 85   # CI exit code
+uv run faultline break --path examples/support_bot
+uv run faultline report --path examples/support_bot
 ```
 
-## Layout
+The generated report is written to:
 
+```text
+examples/support_bot/.faultline/report.html
 ```
-schemas/            frozen JSON contracts (fault schedule, run record, dossier, patch result, attack plan)
+
+For the live hardening loop, authenticate the Codex CLI first, then run:
+
+```bash
+make demo-harden
+```
+
+To exercise the OpenAI Agents SDK target and GPT-5.6 judge, edit
+`examples/support_bot/faultline.yaml`:
+
+```yaml
+target:
+  agent: examples.support_bot.agent:run_task
+judge:
+  mode: llm
+  model: gpt-5.6
+```
+
+That live path requires `OPENAI_API_KEY`.
+
+## CLI Flow
+
+```bash
+faultline init                 # TODO: generate faultline.yaml for a target repo
+faultline plan                 # TODO: GPT-5.6 planner-lite attack plan
+faultline break                # run scenarios x seeds under injected faults
+faultline harden               # Codex loop: dossier -> patch -> gate -> re-break
+faultline report               # static HTML report with curve, runs, patches
+faultline gate --min-score 85  # CI-style release gate
+```
+
+## Implementation Status
+
+| Area | Done now | Evidence in repo | Left to do for full-scale implementation |
+| --- | --- | --- | --- |
+| Core contracts | Frozen JSON contracts for fault schedules, run records, dossiers, patch results, and attack plans. | `schemas/`, `FAULTLINE_BLUEPRINT.md` | Add schema examples to docs and validate every emitted artifact in CI. |
+| Offline demo | Reproducible support-bot sandbox with scripted fragile agent, SQLite backend, four scenarios, and deterministic judge mode. | `examples/support_bot/`, `tests/test_e2e_offline.py` | Commit a sample report artifact or screenshot for judges who skim before running. |
+| Fault library | Five tier-0 LLM-native faults: timeout, flapping side effect, empty result, stale data, and injected instruction. | `src/faultline/faults/library.py` | Expand toward the full taxonomy: auth drift, rate limits, malformed JSON, partial writes, tool permission failures, and multi-step memory poison. |
+| Fault scheduler | Seeded schedule is a pure function of `(seed, scenario)`, which makes before/after hardening comparisons fair. | `src/faultline/faults/scheduler.py`, `tests/test_scheduler_determinism.py` | Add multi-fault schedules and planner-selected targets while preserving determinism. |
+| Tool interception | Tool wrapper records transcripts and injects failures below the agent framework. | `src/faultline/intercept/adapters/openai_agents.py` | Finish LLM proxy and MCP proxy add-backs for model-output and MCP-server fault injection. |
+| Runner and budgets | Async gauntlet runs every scenario/seed pair, records cost, kills over-budget runs, and stores results in SQLite. | `src/faultline/run/gauntlet.py`, `src/faultline/ledger/store.py` | Move each run into a subprocess for hard isolation of stuck sync tools. |
+| Deterministic judge | Detectors catch loops, budget overruns, crashes, and end-state failures without model calls. | `src/faultline/judge/detectors.py`, `src/faultline/judge/judge.py` | Calibrate the optional GPT-5.6 judge on live runs and document grade examples. |
+| Resilience Score | Weighted score and survival curve turn run outcomes into one release-gate number. | `src/faultline/score/`, `tests/test_scorer.py` | Add per-fault-class breakdown to the HTML report and README demo results. |
+| Report | Static HTML report shows survival curve, run matrix, judge reasons, and patch ledger. | `src/faultline/ledger/report/render.py` | Polish report styling and include direct links to transcripts/dossiers. |
+| Codex hardener | Builds failure dossiers, renders a hardening prompt, calls headless `codex exec`, and parses structured output. | `src/faultline/harden/` | Run a full live harden climb with Codex credits and capture before/after Resilience Score for the video. |
+| Patch gatekeeper | Accepts patches only if happy paths still pass, anti-cheat markers are absent, and score does not regress. | `src/faultline/gate/` | Replace marker-only anti-cheat with a GPT-5.6 adversarial diff audit plus allowlisted safe patterns. |
+| CLI polish | `break`, `harden`, `report`, and `gate` are implemented. | `src/faultline/cli.py`, `Makefile` | Implement `faultline init` and `faultline plan` so a judge can point Faultline at a fresh repo. |
+| Planner | Tier-0 curated planning shape exists through schema and blueprint. | `schemas/attack_plan.schema.json`, `src/faultline/plan/planner.py` | Build GPT-5.6 planner-lite: repo digest -> ranked attack plan -> scenario/fault target suggestions. |
+| GitHub Action | Action package exists as a placeholder. | `action/action.yml` | Replace the stub with a real composite action that installs Faultline and runs `faultline gate`. |
+| Tests | Unit and offline end-to-end tests cover scheduler determinism, fault mutation, detectors, scorer, and gauntlet. | `tests/` | Add live integration tests behind env flags for GPT-5.6 judge, SDK agent, and Codex hardener. |
+| Submission package | MIT license, blueprint, install commands, sample data, and offline path are present. | `LICENSE`, `README.md`, `FAULTLINE_BLUEPRINT.md` | Record demo video, add `/feedback` Codex session ID, publish/share repository, and fill Devpost fields. |
+
+## Deadline Plan
+
+| Priority | Work item | Why it matters | Acceptance check |
+| --- | --- | --- | --- |
+| P0 | Run clean `uv sync`, `uv run pytest -q`, and `make demo` on a fresh checkout. | Judges need a no-surprises first run. | README commands work from scratch and generate `report.html`. |
+| P0 | Run live `faultline harden` with the Codex CLI authenticated. | This is the core Build Week story: Codex fixes failures found by Faultline. | Video shows baseline RS, Codex patch attempt, accepted patch, and improved RS. |
+| P0 | Verify GPT-5.6 judge mode and OpenAI Agents SDK target. | Confirms the live OpenAI path, not only the offline sandbox. | `judge.mode: llm` produces structured grades without breaking the report. |
+| P0 | Implement `faultline init`. | Makes the tool feel real outside the bundled demo. | Running `faultline init --path some_agent_repo` writes a usable `faultline.yaml` scaffold. |
+| P0 | Replace GitHub Action stub. | Turns Faultline into a CI gate, which strengthens the developer-tools category. | A workflow can call the action and fail when RS is below threshold. |
+| P1 | Implement GPT-5.6 planner-lite. | Shows GPT-5.6 doing strategic fault selection, not just rubric grading. | `faultline plan` emits `attack_plan.json` with ranked targets and reasons. |
+| P1 | Add GPT-5.6 anti-cheat diff audit. | Prevents patches that only memorize the injected failure. | Gate rejects hard-coded marker fixes and explains why. |
+| P1 | Polish report output. | The report is what judges will inspect after the video. | Report includes score, curve, matrix, transcripts, dossiers, and patch verdicts. |
+| P1 | Add demo artifacts. | Reduces judging friction. | README links to sample report, sample transcript, and expected baseline score. |
+| P2 | Expand fault taxonomy beyond tier-0. | Increases product depth after the core story is locked. | At least 10-12 faults are available and grouped by class. |
+| P2 | Add MCP and LLM proxy injection. | Broadens framework coverage. | Faultline can perturb MCP tool responses and model responses, not only raw tool callables. |
+| P2 | Add a second example agent. | Proves generality beyond support workflows. | Trip planner or research MCP example runs through the same gauntlet. |
+
+## Architecture
+
+```text
+schemas/                  JSON contracts for all exchanged artifacts
 src/faultline/
-  intercept/        tool-surface adapter (tier 0) · llm/mcp proxies (add-backs)
-  faults/           fault library + seeded deterministic scheduler
-  plan/             attack planner (tier 0: curated)
-  run/              gauntlet runner, isolation, budgets
-  judge/            deterministic detectors + GPT-5.6 rubric judge
-  score/            Resilience Score + survival curve
-  harden/           failure dossier → codex exec loop
-  gate/             golden traces, anti-cheat, gatekeeper
-  ledger/           SQLite store + report templates
-examples/support_bot/   primary demo agent (deliberately fragile)
-action/             GitHub Action wrapping `faultline gate` (add-back)
+  intercept/              adapters and proxy hooks for fault injection
+  faults/                 fault library and seeded scheduler
+  plan/                   curated planner now; GPT-5.6 planner-lite next
+  run/                    gauntlet runner, budgets, sandbox helpers
+  judge/                  deterministic detectors and optional GPT-5.6 judge
+  score/                  Resilience Score and survival curve
+  harden/                 failure dossier and Codex hardening loop
+  gate/                   golden traces, anti-cheat checks, monotone score gate
+  ledger/                 SQLite run store and report renderer
+examples/support_bot/     primary fragile demo agent and sample data
+action/                   GitHub Action wrapper for `faultline gate`
+tests/                    offline unit and end-to-end coverage
 ```
 
-## Ownership
+## Demo Script
 
-- **Person A — Break:** intercept, faults, run, ledger, examples
-- **Person B — Judge & Fix:** judge, score, harden, gate, plan
+1. Start with the support bot passing normal happy-path work.
+2. Run `make demo` to show the agent failing under stale data, prompt injection,
+   and flapping side effects.
+3. Open `examples/support_bot/.faultline/report.html` and explain the
+   Resilience Score, survival curve, and failure matrix.
+4. Run `make demo-harden` with Codex authenticated.
+5. Show the Codex-generated patch being accepted only after golden traces,
+   anti-cheat checks, and monotone score improvement.
+6. Re-open the report and compare baseline vs. hardened score.
 
-Rule one: never start an add-back while the core loop is broken.
+Keep the final video under three minutes and explicitly say where Codex and
+GPT-5.6 were used.
 
-## Build log
+## Devpost Submission Checklist
 
-**`82f641a` — scaffold.** Repo layout per the blueprint (§8), the five frozen
-JSON schemas in `schemas/` (fault schedule, run record, dossier, patch result,
-attack plan — the interface contract between Break and Judge & Fix), module
-stubs carrying owner + build-day, MIT license, Makefile, GitHub Action stub.
+| Requirement | Status | Notes |
+| --- | --- | --- |
+| Working project | In progress | Offline gauntlet works; live harden climb still needs final verification. |
+| Category | Ready | Submit under Developer tools. |
+| Project description | Drafted | Use the pitch and workflow sections above. |
+| Demo video under 3 minutes | TODO | Show break -> report -> Codex harden -> improved report. |
+| Public or shared repository | TODO | Public with MIT license, or private shared with required judging emails. |
+| README setup instructions | Ready | Quickstart above covers offline and live paths. |
+| Sample data | Ready | Support-bot SQLite backend is generated from repo-local fixtures. |
+| Codex/GPT-5.6 usage explanation | In progress | README describes intended usage; final video should show the live loop. |
+| `/feedback` Codex session ID | TODO | Add the session ID from the main build session before submission. |
+| Plugin/developer tool install notes | In progress | Add GitHub Action usage after replacing the action stub. |
 
-**`6b2ddf7` — tier-0 core, working.** Everything needed for
-`break → judge → score → report → gate`, plus the harden loop:
+## Current Scope Contract
 
-- **Faults (5):** `tool_timeout`, `tool_flapping` (the call *lands*, the
-  response is lost — naive retries double-refund), `empty_result`,
-  `stale_data`, `injected_instruction`. Seeded scheduler: schedule is a pure
-  function of `(seed, scenario)`.
-- **Interceptor:** wraps raw tool callables below any framework; records the
-  transcript; works for both the Agents SDK agent and the scripted one.
-- **Runner:** asyncio gauntlet with hard wall-clock kill; SQLite ledger.
-- **Judge:** deterministic detectors (loop / budget / crash / end-state) +
-  optional GPT structured-output rubric (`judge.mode: llm`).
-- **Scorer/report:** Resilience Score, survival-curve SVG, static HTML report,
-  CI `gate` exit code.
-- **Hardener:** dossier builder → headless `codex exec --output-schema` →
-  gatekeeper (golden traces + anti-cheat marker grep + monotone-score revert).
-- **Support-bot example:** SQLite mock CRM, deliberately naive agent (SDK and
-  scripted variants), 4 scenarios with end-state assertions.
-
-Verified: 14 tests green including an offline end-to-end gauntlet and a
-determinism test; `make demo` prints the baseline **RS 28.8/100 💀**. All
-external surfaces (`codex exec` flags, Agents SDK, Responses API) checked
-against installed versions.
-
-**Not yet verified live:** `faultline harden` end-to-end (the `codex exec`
-spike proved the mechanics but hit a ChatGPT usage limit), the LLM judge, and
-the SDK agent — all need Codex credits / an `OPENAI_API_KEY`.
-
-**Next up (add-back order):** live harden climb, GPT anti-cheat diff audit,
-planner-lite, novelty-claims + prior-art README section, demo video.
+The detailed product and build blueprint lives in
+[`FAULTLINE_BLUEPRINT.md`](FAULTLINE_BLUEPRINT.md). Tier-0 scope is the offline
+break/judge/score/report/gate loop plus the Codex hardener scaffold. The
+remaining work above is ordered to maximize judging impact before the July 21,
+2026 deadline.
