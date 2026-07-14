@@ -8,7 +8,7 @@ Last updated: 2026-07-14
 | --- | --- |
 | Build Week category | Developer tools |
 | Primary OpenAI usage | Codex hardener loop, GPT-5.6 judge, GPT-5.6 planner, GPT-5.6 anti-cheat audit |
-| Codex `/feedback` session ID | TODO: paste the session ID from the Codex `/feedback` command before Devpost submission |
+| Codex `/feedback` session ID | `019f610b-2665-7f51-9f4a-c13a7e700e8e` |
 | Provenance stance | Repo hygiene is fine; do not misrepresent authorship or hide required Build Week provenance. |
 
 ## Saved Decisions
@@ -76,5 +76,5 @@ make demo-harden
 | README | Updated with status, roadmap, demo script, and checklist. |
 | Repository URL | https://github.com/dasashreeya/faultline |
 | Demo video | TODO. Show break -> plan/report -> Codex harden -> improved report. |
-| `/feedback` Codex session ID | TODO. Paste above and into Devpost. |
+| `/feedback` Codex session ID | `019f610b-2665-7f51-9f4a-c13a7e700e8e` |
 | Code license | MIT license present. |

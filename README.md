@@ -169,7 +169,7 @@ GPT-5.6 were used.
 | README setup instructions | Ready | Quickstart above covers offline and live paths. |
 | Sample data | Ready | Support-bot SQLite backend is generated from repo-local fixtures. |
 | Codex/GPT-5.6 usage explanation | In progress | README describes intended usage; final video should show the live loop. |
-| `/feedback` Codex session ID | TODO | Add the session ID from the main build session to `SUBMISSION_STATE.md` and Devpost. |
+| `/feedback` Codex session ID | Ready | `019f610b-2665-7f51-9f4a-c13a7e700e8e` |
 | Plugin/developer tool install notes | Ready | GitHub Action usage is available in `action/action.yml`. |
 
 ## Current Scope Contract
