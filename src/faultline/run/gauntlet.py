@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 import uuid
 
 from faultline.config import Config, load_scenarios, resolve
-from faultline.faults.scheduler import build_schedule
+from faultline.faults.scheduler import attack_for, build_schedule
 from faultline.intercept.adapters.openai_agents import Transcript, wrap_tools
 from faultline.judge.detectors import run_detectors
 from faultline.judge.judge import grade_run
@@ -16,7 +17,12 @@ from faultline.score.resilience import resilience_score
 
 
 async def run_one(
-    cfg: Config, scenario: dict, seed: int, attempt: int, schedule: dict | None = None
+    cfg: Config,
+    scenario: dict,
+    seed: int,
+    attempt: int,
+    schedule: dict | None = None,
+    plan: dict | None = None,
 ) -> dict:
     """One faulted run. Pass schedule={'entries': []} for a fault-free golden run."""
 
@@ -27,8 +33,9 @@ async def run_one(
 
     db_path = str(cfg.state_dir / f"backend-{scenario['id']}-s{seed}.sqlite3")
     reset_backend(db_path)
+    attack = attack_for(plan, scenario["id"])
     if schedule is None:
-        schedule = build_schedule(scenario, seed)
+        schedule = build_schedule(scenario, seed, attack=attack)
     transcript = Transcript()
     tools = wrap_tools(build_tools(db_path), schedule, transcript)
 
@@ -56,7 +63,9 @@ async def run_one(
         "transcript": transcript.events,
         "end_state": end_state,
         "detectors": run_detectors(transcript.events, end_state, scenario),
-        "planner_hypothesis": None,
+        # The planner's prediction rides along into the dossier, so Codex sees
+        # *why* this fault was aimed here, not just that it landed.
+        "planner_hypothesis": attack.get("hypothesis") if attack else None,
         "cost": {
             "tool_calls": sum(1 for e in transcript.events if e["type"] == "tool_call"),
             "wall_time_s": round(time.monotonic() - start, 3),
@@ -66,24 +75,55 @@ async def run_one(
     return record
 
 
-async def run_gauntlet(cfg: Config, attempt: int, on_run=None) -> tuple[float, list[dict]]:
-    """Full gauntlet for one attempt. Persists runs + score; returns (RS, records)."""
+def load_plan_if_any(cfg: Config) -> dict | None:
+    """Use the attack plan from `faultline plan` when one exists.
+
+    The gauntlet is still fully seeded without it — the plan only *aims* the
+    faults it names. Absent a plan, the scheduler's seeded draw stands.
+    """
+    plan_path = cfg.state_dir / "attack_plan.json"
+    if not plan_path.exists():
+        return None
+    try:
+        return json.loads(plan_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+async def run_gauntlet(
+    cfg: Config,
+    attempt: int,
+    on_run=None,
+    plan: dict | None = None,
+    persist: bool = True,
+) -> tuple[float, list[dict]]:
+    """Full gauntlet for one attempt. Persists runs + score; returns (RS, records).
+
+    `persist=False` scores a gauntlet without touching the ledger — used by the
+    planner-vs-random eval, which must not pollute the survival curve.
+    """
 
     scenarios = load_scenarios(cfg.scenarios_path)
-    ledger = Ledger(cfg.state_dir / "ledger.sqlite3")
+    if plan is None:
+        plan = load_plan_if_any(cfg)
+    ledger = Ledger(cfg.state_dir / "ledger.sqlite3") if persist else None
+    if ledger:
+        ledger.clear_attempt(attempt)  # an attempt is a complete re-run; old rows are stale
     records = []
     for scenario in scenarios:
         for seed in cfg.seeds:
             if cfg.isolation == "subprocess":
                 from faultline.run.sandbox import run_one_subprocess
 
-                rec = await run_one_subprocess(cfg, scenario, seed, attempt)
+                rec = await run_one_subprocess(cfg, scenario, seed, attempt, plan=plan)
             else:
-                rec = await run_one(cfg, scenario, seed, attempt)
-            ledger.add_run(rec)
+                rec = await run_one(cfg, scenario, seed, attempt, plan=plan)
+            if ledger:
+                ledger.add_run(rec)
             records.append(rec)
             if on_run:
                 on_run(rec)
     rs = resilience_score(records)
-    ledger.add_score(attempt, rs)
+    if ledger:
+        ledger.add_score(attempt, rs)
     return rs, records

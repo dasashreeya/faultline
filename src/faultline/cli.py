@@ -130,12 +130,99 @@ def plan(
     console.print(f"attack plan -> [bold]{out}[/bold]")
 
 
-@app.command(name="break")
-def break_(path: Path = PathOpt, attempt: int = typer.Option(0, help="Hardening attempt index")) -> None:
-    """Run the gauntlet: scenarios × seeds, grade every run, print the Resilience Score."""
+@app.command(name="eval-plan")
+def eval_plan(
+    path: Path = PathOpt,
+    trials: int = typer.Option(5, "--trials", help="Random-baseline seeds to average over"),
+    planner: str = typer.Option("curated", "--planner", help="Planner to test: curated or gpt"),
+) -> None:
+    """Adversarial planning vs random chaos: does reading the code first pay off?
+
+    Fires the same scenarios and seeds two ways — faults aimed by the planner,
+    versus blind random chaos averaged over `--trials` baseline seeds — and
+    reports which found more failures. A *lower* Resilience Score is a better
+    attack: it means the chaos surfaced weaknesses the other run missed.
+
+    Nothing here touches the ledger, so the survival curve stays clean.
+    """
+    from statistics import mean
+
+    from faultline.plan.planner import build_plan
     from faultline.run.gauntlet import run_gauntlet
 
     cfg = _load(path)
+
+    def score(plan_obj) -> tuple[float, int, int]:
+        rs, records = asyncio.run(run_gauntlet(cfg, attempt=0, plan=plan_obj, persist=False))
+        crit = sum(1 for r in records if r["judge"]["grade"] in ("D", "E"))
+        return rs, crit, len(records)
+
+    baselines = [score(build_plan(cfg, mode="random", seed=s)) for s in range(trials)]
+    rand_rs = mean(b[0] for b in baselines)
+    rand_crit = mean(b[1] for b in baselines)
+
+    plan_rs, plan_crit, runs = score(build_plan(cfg, mode=planner))
+
+    table = Table(title=f"Adversarial planner vs random chaos ({runs} runs each)")
+    for col, just in (
+        ("chaos strategy", "left"),
+        ("resilience score", "right"),
+        ("critical failures (D/E)", "right"),
+    ):
+        table.add_column(col, justify=just)
+    table.add_row(
+        f"random baseline (mean of {trials})",
+        f"{rand_rs:.1f}",
+        f"{rand_crit:.1f}/{runs}",
+    )
+    table.add_row(
+        f"[bold]adversarial planner ({planner})[/bold]",
+        f"[bold]{plan_rs:g}[/bold]",
+        f"[bold]{plan_crit}/{runs}[/bold]",
+    )
+    console.print(table)
+    console.print(
+        f"[dim]random baseline per-seed scores: "
+        f"{', '.join(f'{b[0]:g}' for b in baselines)}[/dim]"
+    )
+
+    delta = rand_rs - plan_rs
+    extra = plan_crit - rand_crit
+    if delta > 0 or extra > 0:
+        console.print(
+            f"\n[bold green]The planner beats random chaos.[/bold green] Blind chaos rates this "
+            f"agent [bold]{rand_rs:.1f}/100[/bold] and finds {rand_crit:.1f} critical failures; "
+            f"the planner — which read the code first — drives it to [bold]{plan_rs:g}/100[/bold] "
+            f"and finds {plan_crit}. Chaos with a map, not a blindfold."
+        )
+    else:
+        console.print(
+            "\n[yellow]The planner did not beat random chaos on this target.[/yellow] "
+            "Honest result; the plan's hypotheses are in attack_plan.json."
+        )
+
+
+@app.command(name="break")
+def break_(
+    path: Path = PathOpt,
+    attempt: int = typer.Option(0, help="Hardening attempt index"),
+    use_plan: bool = typer.Option(
+        True,
+        "--plan/--no-plan",
+        help="Aim faults with .faultline/attack_plan.json when present (--no-plan = seeded draw only)",
+    ),
+) -> None:
+    """Run the gauntlet: scenarios × seeds, grade every run, print the Resilience Score."""
+    from faultline.run.gauntlet import load_plan_if_any, run_gauntlet
+
+    cfg = _load(path)
+    plan = load_plan_if_any(cfg) if use_plan else None
+    if plan:
+        console.print(
+            f"[dim]aiming faults with attack plan ({plan.get('generated_by', '?')}) "
+            f"— {len(plan.get('attacks', []))} ranked attacks[/dim]"
+        )
+
     table = Table(title=f"Faultline gauntlet — attempt {attempt}")
     for col in ("scenario", "seed", "fault", "grade", "judge"):
         table.add_column(col)
@@ -150,8 +237,30 @@ def break_(path: Path = PathOpt, attempt: int = typer.Option(0, help="Hardening 
             rec["judge"]["reasoning"],
         )
 
-    rs, _ = asyncio.run(run_gauntlet(cfg, attempt, on_run=on_run))
+    rs, records = asyncio.run(run_gauntlet(cfg, attempt, on_run=on_run, plan=plan))
     console.print(table)
+
+    from faultline.score.resilience import class_breakdown
+
+    breakdown = Table(title="Fault-class breakdown")
+    for col, just in (
+        ("class", "left"),
+        ("surface", "left"),
+        ("survival %", "right"),
+        ("weight", "right"),
+        ("contributes", "right"),
+    ):
+        breakdown.add_column(col, justify=just)
+    for row in class_breakdown(records):
+        breakdown.add_row(
+            row["fault_class"],
+            row["label"],
+            f"{row['survival']:g}",
+            f"{row['weight'] * 100:.0f}%",
+            f"{row['contribution']:g}",
+        )
+    console.print(breakdown)
+
     mark = ":white_check_mark:" if rs >= cfg.gate_min_score else ":skull:"
     console.print(f"\n[bold]Resilience Score: {rs}/100[/bold] {mark}")
 
@@ -213,7 +322,8 @@ def report(path: Path = PathOpt) -> None:
 
     cfg = _load(path)
     out = cfg.state_dir / "report.html"
-    out.write_text(render_report(Ledger(cfg.state_dir / "ledger.sqlite3")), encoding="utf-8")
+    ledger = Ledger(cfg.state_dir / "ledger.sqlite3")
+    out.write_text(render_report(ledger, gate=cfg.gate_min_score), encoding="utf-8")
     console.print(f"report → [bold]{out}[/bold]")
 
 

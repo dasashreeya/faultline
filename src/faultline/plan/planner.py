@@ -109,21 +109,33 @@ def _curated_plan(scenarios: list[dict[str, Any]], digest: dict[str, Any]) -> di
 
 
 def _random_plan(scenarios: list[dict[str, Any]], seed: int) -> dict[str, Any]:
+    """Blind chaos: the honest baseline the adversarial planner has to beat.
+
+    This deliberately ignores each scenario's `fault_pool`. That pool is itself
+    a form of aiming — a human already decided which fault belongs in which
+    scenario — so sampling from it would hand the baseline the planner's whole
+    advantage and make the comparison meaningless. Real random chaos fires any
+    fault at any tool and mostly misses; that is the point of the experiment.
+    """
     rng = random.Random(seed)
-    attacks = []
-    for scenario in scenarios:
-        attacks.extend(_scenario_attacks(scenario))
-    rng.shuffle(attacks)
+    fault_ids = sorted(TIER0_FAULTS)
     out = []
-    for i, attack in enumerate(attacks, start=1):
+    for i, scenario in enumerate(scenarios, start=1):
+        targets = sorted(scenario.get("fault_targets") or scenario.get("tools") or [])
+        if not targets:
+            continue
+        fault_id = rng.choice(fault_ids)
+        target = rng.choice(targets)
         out.append(
             {
                 "rank": i,
-                "scenario_id": attack["scenario_id"],
-                "fault": attack["fault"],
-                "target": attack["target"],
-                "step_hint": attack["step_hint"],
-                "hypothesis": f"Random baseline selected {attack['fault']} against {attack['target']}.",
+                "scenario_id": scenario["id"],
+                "fault": fault_id,
+                "target": target,
+                "step_hint": int(scenario.get("fault_step", 0)),
+                "hypothesis": (
+                    f"Random baseline fired {fault_id} at {target} with no knowledge of the code."
+                ),
             }
         )
     return {"generated_by": "random", "attacks": out}

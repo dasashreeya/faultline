@@ -30,6 +30,7 @@ def _child_run_one(
     seed: int,
     attempt: int,
     schedule: dict[str, Any] | None,
+    plan: dict[str, Any] | None,
     out: mp.Queue,
 ) -> None:
     try:
@@ -38,31 +39,54 @@ def _child_run_one(
         from faultline.run.gauntlet import run_one
 
         cfg = load_config(Path(cfg_root))
-        record = asyncio.run(run_one(cfg, scenario, seed, attempt, schedule=schedule))
+        record = asyncio.run(
+            run_one(cfg, scenario, seed, attempt, schedule=schedule, plan=plan)
+        )
         out.put({"record": record})
     except Exception:
         out.put({"error": traceback.format_exc()})
 
 
 async def run_one_subprocess(
-    cfg: Config, scenario: dict[str, Any], seed: int, attempt: int, schedule: dict | None = None
+    cfg: Config,
+    scenario: dict[str, Any],
+    seed: int,
+    attempt: int,
+    schedule: dict | None = None,
+    plan: dict | None = None,
 ) -> dict[str, Any]:
     """Run one faulted scenario in a killable child process."""
 
-    result = await asyncio.to_thread(_run_one_subprocess_sync, cfg, scenario, seed, attempt, schedule)
+    result = await asyncio.to_thread(
+        _run_one_subprocess_sync, cfg, scenario, seed, attempt, schedule, plan
+    )
     if "record" in result:
         return result["record"]
     return await _infra_failure_record(cfg, scenario, seed, attempt, schedule, result["error"])
 
 
 def _run_one_subprocess_sync(
-    cfg: Config, scenario: dict[str, Any], seed: int, attempt: int, schedule: dict | None
+    cfg: Config,
+    scenario: dict[str, Any],
+    seed: int,
+    attempt: int,
+    schedule: dict | None,
+    plan: dict | None = None,
 ) -> dict[str, Any]:
     ctx = mp.get_context("spawn")
     out: mp.Queue = ctx.Queue()
     proc = ctx.Process(
         target=_child_run_one,
-        args=(str(cfg.root), str(Path.cwd().resolve()), scenario, seed, attempt, schedule, out),
+        args=(
+            str(cfg.root),
+            str(Path.cwd().resolve()),
+            scenario,
+            seed,
+            attempt,
+            schedule,
+            plan,
+            out,
+        ),
     )
     proc.start()
     proc.join(float(cfg.run_timeout_s) + 2.0)

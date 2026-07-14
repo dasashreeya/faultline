@@ -27,6 +27,19 @@ class Ledger:
     def _conn(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path)
 
+    def clear_attempt(self, attempt: int) -> None:
+        """Drop any prior runs for this attempt.
+
+        run_id is a fresh uuid per run, so re-running the same attempt would
+        otherwise append a second full set of rows instead of replacing the
+        first. That matters: the harden loop re-runs the gauntlet per attempt,
+        and mixing pre-patch runs with post-patch runs would corrupt both the
+        dossiers and the survival curve. An attempt is a complete re-run, so
+        the previous rows for it are stale by definition.
+        """
+        with self._conn() as conn:
+            conn.execute("DELETE FROM runs WHERE attempt = ?", (attempt,))
+
     def add_run(self, record: dict) -> None:
         with self._conn() as conn:
             conn.execute(
