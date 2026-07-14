@@ -1,5 +1,5 @@
-"""Patch acceptance: golden traces pass AND anti-cheat pass AND score is
-monotone — otherwise the working tree is reverted. Discarded attempts stay
+"""Patch acceptance: golden traces pass AND anti-cheat pass AND score
+improves — otherwise the working tree is reverted. Discarded attempts stay
 in the ledger; honesty in the report is a feature.
 """
 
@@ -40,9 +40,9 @@ async def evaluate_patch(
         return False, "anti-cheat gate: " + "; ".join(violations), prev_rs
 
     new_rs, _ = await run_gauntlet(cfg, attempt)
-    if new_rs < prev_rs:
+    if new_rs <= prev_rs:
         revert_worktree(cfg)
-        return False, f"monotonicity gate: score fell {prev_rs} → {new_rs}", prev_rs
+        return False, f"improvement gate: score did not improve {prev_rs} → {new_rs}", prev_rs
 
     subprocess.run(["git", "-C", str(cfg.root), "add", "-A"], check=False)
     subprocess.run(
