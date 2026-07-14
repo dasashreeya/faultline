@@ -61,3 +61,41 @@ action/             GitHub Action wrapping `faultline gate` (add-back)
 - **Person B — Judge & Fix:** judge, score, harden, gate, plan
 
 Rule one: never start an add-back while the core loop is broken.
+
+## Build log
+
+**`82f641a` — scaffold.** Repo layout per the blueprint (§8), the five frozen
+JSON schemas in `schemas/` (fault schedule, run record, dossier, patch result,
+attack plan — the interface contract between Break and Judge & Fix), module
+stubs carrying owner + build-day, MIT license, Makefile, GitHub Action stub.
+
+**`6b2ddf7` — tier-0 core, working.** Everything needed for
+`break → judge → score → report → gate`, plus the harden loop:
+
+- **Faults (5):** `tool_timeout`, `tool_flapping` (the call *lands*, the
+  response is lost — naive retries double-refund), `empty_result`,
+  `stale_data`, `injected_instruction`. Seeded scheduler: schedule is a pure
+  function of `(seed, scenario)`.
+- **Interceptor:** wraps raw tool callables below any framework; records the
+  transcript; works for both the Agents SDK agent and the scripted one.
+- **Runner:** asyncio gauntlet with hard wall-clock kill; SQLite ledger.
+- **Judge:** deterministic detectors (loop / budget / crash / end-state) +
+  optional GPT structured-output rubric (`judge.mode: llm`).
+- **Scorer/report:** Resilience Score, survival-curve SVG, static HTML report,
+  CI `gate` exit code.
+- **Hardener:** dossier builder → headless `codex exec --output-schema` →
+  gatekeeper (golden traces + anti-cheat marker grep + monotone-score revert).
+- **Support-bot example:** SQLite mock CRM, deliberately naive agent (SDK and
+  scripted variants), 4 scenarios with end-state assertions.
+
+Verified: 14 tests green including an offline end-to-end gauntlet and a
+determinism test; `make demo` prints the baseline **RS 28.8/100 💀**. All
+external surfaces (`codex exec` flags, Agents SDK, Responses API) checked
+against installed versions.
+
+**Not yet verified live:** `faultline harden` end-to-end (the `codex exec`
+spike proved the mechanics but hit a ChatGPT usage limit), the LLM judge, and
+the SDK agent — all need Codex credits / an `OPENAI_API_KEY`.
+
+**Next up (add-back order):** live harden climb, GPT anti-cheat diff audit,
+planner-lite, novelty-claims + prior-art README section, demo video.
