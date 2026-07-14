@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultline/dossier",
+  "title": "FailureDossier",
+  "description": "Everything Codex needs to harden one failing scenario cluster. Rendered into harden/prompts/hardener_prompt.md.",
+  "type": "object",
+  "required": ["scenario_id", "fault_class", "fault_schedule", "run_ids", "judge_grade", "judge_reasoning", "transcript_excerpt", "end_state_diff"],
+  "properties": {
+    "scenario_id": { "type": "string" },
+    "fault_class": { "enum": ["F1", "F2", "F3", "F4", "F5"] },
+    "fault_schedule": { "$ref": "faultline/fault_schedule" },
+    "run_ids": { "type": "array", "items": { "type": "string" } },
+    "judge_grade": { "enum": ["A", "B", "C", "D", "E"] },
+    "judge_reasoning": { "type": "string" },
+    "transcript_excerpt": { "type": "string", "description": "the failing span, trimmed for the prompt" },
+    "end_state_diff": { "type": "string", "description": "expected vs actual backend state" },
+    "planner_hypothesis": { "type": ["string", "null"] },
+    "repo_hints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "file paths / symbols implicated (e.g. the tool wrapper missing a timeout)"
+    }
+  }
+}

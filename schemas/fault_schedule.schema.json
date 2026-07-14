@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultline/fault_schedule",
+  "title": "FaultSchedule",
+  "description": "Pure function of (seed, scenario). Ground truth of what was injected; the judge grades against it.",
+  "type": "object",
+  "required": ["scenario_id", "seed", "entries"],
+  "properties": {
+    "scenario_id": { "type": "string" },
+    "seed": { "type": "integer" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step", "surface", "target", "fault"],
+        "properties": {
+          "step": { "type": "integer", "description": "0-indexed call number on the target surface" },
+          "surface": { "enum": ["tool", "llm"], "description": "tier 0 uses 'tool' only" },
+          "target": { "type": "string", "description": "tool name, or 'llm' for the LLM surface" },
+          "fault": { "type": "string", "description": "fault id from faults/library.py" },
+          "params": { "type": "object" }
+        }
+      }
+    }
+  }
+}

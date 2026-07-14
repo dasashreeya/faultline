@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faultline/run_record",
+  "title": "RunRecord",
+  "description": "One (scenario, seed, attempt) execution. Person A writes these from the gauntlet; Person B reads them in the judge/scorer. Frozen at full-blueprint shape — tier 0 leaves planner_hypothesis null.",
+  "type": "object",
+  "required": ["run_id", "scenario_id", "seed", "attempt", "fault_schedule", "transcript", "end_state", "cost"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "scenario_id": { "type": "string" },
+    "seed": { "type": "integer" },
+    "attempt": { "type": "integer", "description": "hardening attempt index; 0 = pre-hardening baseline" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "fault_schedule": { "$ref": "faultline/fault_schedule" },
+    "transcript": {
+      "type": "array",
+      "description": "Ordered events: llm/tool_call/tool_result/fault_injected/final_answer",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": { "enum": ["llm", "tool_call", "tool_result", "fault_injected", "final_answer", "exception"] },
+          "tool": { "type": "string" },
+          "args_hash": { "type": "string" },
+          "content": {},
+          "fault": { "type": "string" }
+        }
+      }
+    },
+    "end_state": { "type": "object", "description": "mock-backend snapshot after the run" },
+    "detectors": {
+      "type": "object",
+      "properties": {
+        "loop": { "type": "boolean" },
+        "budget_overrun": { "type": "boolean" },
+        "crash": { "type": "boolean" },
+        "end_state_ok": { "type": "boolean" }
+      }
+    },
+    "judge": {
+      "type": "object",
+      "required": ["grade", "weight", "reasoning"],
+      "properties": {
+        "grade": { "enum": ["A", "B", "C", "D", "E"] },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reasoning": { "type": "string" }
+      }
+    },
+    "planner_hypothesis": { "type": ["string", "null"], "description": "null until add-back 3 (planner-lite)" },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "tokens": { "type": "integer" },
+        "tool_calls": { "type": "integer" },
+        "wall_time_s": { "type": "number" }
+      }
+    }
+  }
+}

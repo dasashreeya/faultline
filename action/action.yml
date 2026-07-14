@@ -1,0 +1,12 @@
+# Composite GitHub Action wrapping `faultline gate`. ADD-BACK 6.
+name: faultline-gate
+description: Fail the workflow if the Resilience Score is below the gate.
+inputs:
+  min-score:
+    description: Minimum Resilience Score
+    default: "85"
+runs:
+  using: composite
+  steps:
+    - run: echo "TODO add-back 6 — uv run faultline gate --min-score ${{ inputs.min-score }}" && exit 1
+      shell: bash

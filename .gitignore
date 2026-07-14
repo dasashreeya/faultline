@@ -1,0 +1,20 @@
+.rocketride/
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+
+# Faultline runtime artifacts
+*.sqlite3
+faultline.yaml
+attack_plan.json
+reports/
+
+.env
+.DS_Store
