@@ -13,6 +13,7 @@ dependencies = [
     "jinja2>=3.1",
     "pyyaml>=6.0",
     "openai>=1.40",
+    "python-dotenv>=1.0",
 ]
 
 [project.scripts]

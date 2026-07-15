@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
@@ -48,6 +49,11 @@ def _load(path: Path):
     from faultline.config import load_config
 
     root = path.resolve()
+    # Live integrations remain opt-in, but when selected they honor the
+    # conventional repo-local .env without replacing CI/shell credentials.
+    load_dotenv(Path.cwd() / ".env", override=False)
+    if root != Path.cwd().resolve():
+        load_dotenv(root / ".env", override=False)
     # target agents are imported by module path relative to the repo, so make
     # the invocation cwd importable (e.g. `examples.support_bot.naive_agent`)
     sys.path.insert(0, str(Path.cwd().resolve()))
