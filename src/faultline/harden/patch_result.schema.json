@@ -4,7 +4,7 @@
   "title": "PatchResult",
   "description": "Passed to `codex exec --output-schema` so the loop parses results without scraping.",
   "type": "object",
-  "required": ["summary", "strategies", "files_changed", "rationale"],
+  "required": ["summary", "strategies", "files_changed", "rationale", "risks"],
   "properties": {
     "summary": { "type": "string", "description": "one line, used as the conventional commit subject" },
     "strategies": {

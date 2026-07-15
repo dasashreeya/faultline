@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "faultline/run_record",
   "title": "RunRecord",
-  "description": "One (scenario, seed, attempt) execution. Person A writes these from the gauntlet; Person B reads them in the judge/scorer. Frozen at full-blueprint shape — tier 0 leaves planner_hypothesis null.",
+  "description": "One (scenario, seed, attempt) execution. The gauntlet writes the record; judge, scorer, report, and hardener consume it. planner_hypothesis is populated when an attack plan is active.",
   "type": "object",
   "required": ["run_id", "scenario_id", "seed", "attempt", "fault_schedule", "transcript", "end_state", "cost"],
   "properties": {
@@ -47,7 +47,7 @@
         "reasoning": { "type": "string" }
       }
     },
-    "planner_hypothesis": { "type": ["string", "null"], "description": "null until add-back 3 (planner-lite)" },
+    "planner_hypothesis": { "type": ["string", "null"], "description": "planner explanation for the selected attack, or null when no plan is active" },
     "cost": {
       "type": "object",
       "properties": {

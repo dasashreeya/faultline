@@ -25,6 +25,25 @@ console = Console()
 PathOpt = typer.Option(".", "--path", help="Directory containing faultline.yaml")
 
 
+async def run_gauntlet_for_harden(cfg, attempt: int):
+    """Run a harden baseline through the normal persisted gauntlet path."""
+    from faultline.run.gauntlet import run_gauntlet
+
+    return await run_gauntlet(cfg, attempt)
+
+
+async def _fresh_harden_baseline(cfg, ledger):
+    """Re-score the source on disk before comparing a new Codex patch.
+
+    A ledger can outlive a rejected/reset patch, so its latest score is not
+    necessarily the score of the current working tree.
+    """
+    scores = ledger.scores()
+    attempt = scores[-1][0] + 1 if scores else 0
+    rs, _ = await run_gauntlet_for_harden(cfg, attempt)
+    return attempt, rs
+
+
 def _load(path: Path):
     from faultline.config import load_config
 
@@ -281,14 +300,18 @@ def harden(path: Path = PathOpt) -> None:
     repo_hints = [cfg.agent_entrypoint, cfg.tools_entrypoint]
 
     scores = ledger.scores()
-    if not scores:
+    baseline_attempt = scores[-1][0] + 1 if scores else 0
+    if scores:
+        console.print(
+            f"Refreshing baseline from the current working tree (attempt {baseline_attempt})"
+        )
+    else:
         console.print("No baseline — running [bold]faultline break[/bold] first (attempt 0)")
-        rs, _ = asyncio.run(run_gauntlet(cfg, 0))
-        scores = [(0, rs)]
-    attempt, rs = scores[-1]
+    baseline_attempt, rs = asyncio.run(_fresh_harden_baseline(cfg, ledger))
+    attempt = baseline_attempt
     console.print(f"Baseline RS: [bold]{rs}[/bold] · gate: {cfg.gate_min_score}")
 
-    for attempt in range(attempt + 1, attempt + 1 + cfg.max_attempts):
+    for attempt in range(baseline_attempt + 1, baseline_attempt + 1 + cfg.max_attempts):
         if rs >= cfg.gate_min_score:
             break
         dossiers = build_dossiers(ledger.runs_for_attempt(attempt - 1), scenarios, repo_hints)

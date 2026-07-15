@@ -4,9 +4,14 @@ You are hardening an AI agent codebase against a fault class it just failed.
 
 ## Failure dossier
 - Scenario: {{ scenario_id }} · Fault class: {{ fault_class }}
+- Task: {{ task }}
+- Scenario contract and end-state oracle:
+{{ scenario_contract }}
 - Injected fault (ground truth): {{ fault_schedule }}
 - Judge grade: {{ judge_grade }} — {{ judge_reasoning }}
 - End-state diff: {{ end_state_diff }}
+- Failing seeds:
+{{ failing_runs }}
 - Transcript excerpt:
 {{ transcript_excerpt }}
 - Implicated code: {{ repo_hints }}
@@ -23,4 +28,20 @@ surfacing to the user.
 - Weakening or deleting existing tests
 
 Handle the fault **class**, not this instance. Keep the diff minimal.
+
+## Required verification before responding
+
+1. Read the target source, tool implementations, and the scenario definitions;
+   do not infer the repair from the transcript alone.
+2. Implement a general behavioral guard that changes the target's outcome under
+   the supplied schedule. A validator that only reports the bad result without
+   preventing a destructive or incorrect action is not sufficient.
+3. Run the target's fault-free path and the supplied failing scenario locally.
+   Confirm the expected end state, not just that the code compiles. For a
+   recoverable read fault, use a bounded independent read or safe fallback; for
+   an uncertain side effect, do not blindly repeat the side effect.
+4. Inspect the final diff and keep only the smallest general fix that passes
+   the existing tests. Do not claim success if the supplied failing scenario
+   still produces the same end-state violation.
+
 Respond per the provided output schema (patch_result.schema.json).

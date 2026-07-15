@@ -180,30 +180,7 @@ def _gpt_plan(digest: dict[str, Any], model: str) -> dict[str, Any]:
 
     from openai import OpenAI
 
-    schema = {
-        "type": "object",
-        "properties": {
-            "generated_by": {"enum": ["gpt"]},
-            "attacks": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "rank": {"type": "integer"},
-                        "scenario_id": {"type": "string"},
-                        "fault": {"type": "string"},
-                        "target": {"type": "string"},
-                        "step_hint": {"type": ["integer", "null"]},
-                        "hypothesis": {"type": "string"},
-                    },
-                    "required": ["rank", "scenario_id", "fault", "target", "hypothesis"],
-                    "additionalProperties": False,
-                },
-            },
-        },
-        "required": ["generated_by", "attacks"],
-        "additionalProperties": False,
-    }
+    schema = _gpt_plan_schema()
     prompt = {
         "available_faults": {
             fid: {
@@ -243,3 +220,38 @@ def _gpt_plan(digest: dict[str, Any], model: str) -> dict[str, Any]:
     plan = json.loads(resp.output_text)
     plan["generated_by"] = "gpt"
     return plan
+
+
+def _gpt_plan_schema() -> dict[str, Any]:
+    """Strict Responses API schema; every declared property must be required."""
+    return {
+        "type": "object",
+        "properties": {
+            "generated_by": {"enum": ["gpt"]},
+            "attacks": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "rank": {"type": "integer"},
+                        "scenario_id": {"type": "string"},
+                        "fault": {"type": "string"},
+                        "target": {"type": "string"},
+                        "step_hint": {"type": ["integer", "null"]},
+                        "hypothesis": {"type": "string"},
+                    },
+                    "required": [
+                        "rank",
+                        "scenario_id",
+                        "fault",
+                        "target",
+                        "step_hint",
+                        "hypothesis",
+                    ],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["generated_by", "attacks"],
+        "additionalProperties": False,
+    }

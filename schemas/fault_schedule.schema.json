@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "faultline/fault_schedule",
   "title": "FaultSchedule",
-  "description": "Pure function of (seed, scenario). Ground truth of what was injected; the judge grades against it.",
+  "description": "Deterministic function of (seed, scenario, optional planned attack). Ground truth of what was injected; the judge grades against it.",
   "type": "object",
   "required": ["scenario_id", "seed", "entries"],
   "properties": {
