@@ -24,7 +24,13 @@ async def run_task(task: str, tools: dict, model: str | None = None) -> str:
     # `tools` are already Faultline-wrapped callables; bind them as LangChain
     # StructuredTools so the graph can call them with faults injected below.
     lc_tools = to_langchain_tools(tools)
-    llm = ChatOpenAI(model=model or "gpt-5.6", temperature=0)
+    # GPT-5.6 exposes function tools through Chat Completions only when
+    # reasoning is disabled; LangGraph supplies tools to every model call.
+    llm = ChatOpenAI(
+        model=model or "gpt-5.6",
+        temperature=0,
+        reasoning_effort="none",
+    )
     agent = create_react_agent(llm, lc_tools)
 
     result = await agent.ainvoke(

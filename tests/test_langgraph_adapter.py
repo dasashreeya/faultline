@@ -1,8 +1,10 @@
 """The LangGraph adapter must inject faults identically to the OpenAI adapter
 and expose tool signatures LangChain can build a schema from."""
 
+import asyncio
 import inspect
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -60,3 +62,38 @@ def test_to_langchain_tools_is_actionable_without_langchain():
         wrapped = wrap_langgraph_tools(_tools(), {"entries": []}, Transcript())
         tools = to_langchain_tools(wrapped)
         assert tools[0].name == "search_flights"
+
+
+def test_live_agent_disables_reasoning_for_chat_completion_tools(monkeypatch):
+    """The GPT-5.6 Chat Completions path must accept LangGraph tools."""
+    captured = {}
+
+    class FakeChatOpenAI:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    class FakeAgent:
+        async def ainvoke(self, _input):
+            return {"messages": [types.SimpleNamespace(content="ok")]}
+
+    fake_openai = types.ModuleType("langchain_openai")
+    fake_openai.ChatOpenAI = FakeChatOpenAI
+    fake_langgraph = types.ModuleType("langgraph")
+    fake_prebuilt = types.ModuleType("langgraph.prebuilt")
+    fake_prebuilt.create_react_agent = lambda _llm, _tools: FakeAgent()
+    fake_langgraph.prebuilt = fake_prebuilt
+    monkeypatch.setitem(sys.modules, "langchain_openai", fake_openai)
+    monkeypatch.setitem(sys.modules, "langgraph", fake_langgraph)
+    monkeypatch.setitem(sys.modules, "langgraph.prebuilt", fake_prebuilt)
+
+    import examples.trip_planner.agent as agent
+
+    monkeypatch.setattr(
+        "faultline.intercept.adapters.langgraph.to_langchain_tools",
+        lambda _tools: ["wrapped-tool"],
+    )
+    result = asyncio.run(agent.run_task("find a flight", {"search": object()}))
+
+    assert result == "ok"
+    assert captured["model"] == "gpt-5.6"
+    assert captured["reasoning_effort"] == "none"
