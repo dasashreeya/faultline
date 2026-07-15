@@ -40,6 +40,17 @@ class Ledger:
         with self._conn() as conn:
             conn.execute("DELETE FROM runs WHERE attempt = ?", (attempt,))
 
+    def discard_attempt(self, attempt: int) -> None:
+        """Remove a rejected trial from scored evidence.
+
+        The patch row is recorded separately by the CLI and remains visible in
+        the report. Runs and scores from a rejected patch must not remain in the
+        survival curve after the source tree has been reverted.
+        """
+        with self._conn() as conn:
+            conn.execute("DELETE FROM runs WHERE attempt = ?", (attempt,))
+            conn.execute("DELETE FROM scores WHERE attempt = ?", (attempt,))
+
     def add_run(self, record: dict) -> None:
         with self._conn() as conn:
             conn.execute(
