@@ -49,12 +49,12 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 110 tests, all offline
+uv run pytest -q          # 112 tests, all offline
 make demo                 # plan → break → report
 ```
 
-`make demo` runs the gauntlet against the bundled, intentionally-fragile
-support bot and writes a self-contained HTML report to
+`make demo` runs the gauntlet against the bundled support bot and writes a
+self-contained HTML report to
 `examples/support_bot/.faultline/report.html` — open it straight from disk.
 
 The default demo uses a **scripted agent and deterministic detectors**, so the
@@ -65,9 +65,11 @@ no spend**. Judges can reproduce every number for free.
 
 ## What you'll see
 
-The bundled support bot is naive in exactly the ways real agent code is naive:
-it trusts tool results blindly, retries without idempotency checks, and has no
-timeouts. The gauntlet finds all of it.
+The bundled support bot began naive in exactly the ways real agent code is
+naive: it trusted tool results blindly and retried side effects without
+idempotency. The accepted Codex hardening run repaired those behaviors. The
+baseline below is the recorded pre-hardening run at commit `1862aee`; the
+current source scores `100.0/100` against the same curated plan.
 
 ```
                         Faultline gauntlet — attempt 0
@@ -100,10 +102,10 @@ patch ledger underneath — **including rejected patches**. Honesty is a feature
 Fixed fault templates fired at random mostly miss. Faultline's planner reads
 the repo (tool signatures, error handling, retry config, prompts) and aims.
 
-Reproduce this yourself — one command, no API key:
+The pre-hardening planner result remains pinned by an offline regression test:
 
 ```bash
-uv run faultline eval-plan --path examples/support_bot
+uv run pytest tests/test_plan_steering.py::test_planned_chaos_beats_blind_chaos -q
 ```
 
 |                                | Resilience Score | Critical failures (D/E) |
@@ -147,7 +149,9 @@ Then the **gatekeeper** decides whether the patch lives:
    diff audit is opt-in via `FAULTLINE_ANTICHEAT=gpt`.
 3. **Monotonicity** — if the re-break scores lower, the branch is reverted.
 
-Rejected attempts stay in the ledger and appear in the report.
+Rejected attempts stay in the ledger and appear in the report. The accepted
+live run climbed `20.6 → 41.2 → 64.7 → 100.0`; a subsequent Codex no-op was
+rejected at `100.0 → 100.0`.
 
 ---
 
@@ -349,14 +353,15 @@ That's the gap Faultline owns — and the welding metal is Codex.
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
 score, report, gate, subprocess isolation, all three injection surfaces (tool,
 LLM proxy, MCP proxy), both example agents, plus the Codex hardener and
-gatekeeper plumbing. 110 tests, all green, no API key required.
+gatekeeper plumbing. 112 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
 implemented, opt-in, and credential-verified. GPT planning emitted a strict
 structured plan, LLM grading appeared in the HTML report, and the required
 anti-cheat audit rejected an overfit patch while allowing a general validator.
-Codex structured output and gate rejection have also been exercised, but an
-accepted score-improving Codex patch is still an open P0 verification item. See
+Codex structured output, gate rejection, and the full accepted hardening loop
+have been exercised live. Three gatekeeper commits raised the curated support
+bot score from `20.6` to `100.0` while preserving golden scenarios. See
 [`SUBMISSION_STATE.md`](SUBMISSION_STATE.md) for exactly what has and hasn't been
 run against live credentials — we'd rather tell you than have you find out.
 

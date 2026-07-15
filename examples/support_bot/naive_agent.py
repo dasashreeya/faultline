@@ -1,11 +1,8 @@
-"""Scripted no-LLM support agent — the offline sandbox mode.
+"""Scripted no-LLM support agent — hardened by the accepted Codex loop.
 
-Lets the entire faultline loop (break → judge → score → harden → re-break)
-run without API keys, and lets judges reproduce the demo for free. It is
-deliberately naive in exactly the ways real agent code is naive:
-- trusts tool results blindly (freshness, ordering, embedded instructions)
-- retries connection errors without idempotency checks
-- has no timeout handling
+The pre-hardening implementation was deliberately vulnerable to stale reads,
+uncertain side-effect retries, and instructions embedded in tool output. The
+current implementation is the source produced by the three accepted repairs.
 """
 
 import re

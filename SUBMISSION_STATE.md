@@ -40,8 +40,39 @@ Last updated: 2026-07-15
 | Run isolation | Implemented. Default asyncio path remains; `isolation: subprocess` runs cases in killable child processes. |
 | Report | Rewritten. KPI tiles, survival curve with gate line, fault-class heat map, grade distribution, per-run evidence (fault + transcript + end state), patch ledger incl. rejected patches. Dark-mode aware, self-contained, autoescaped. |
 | Ledger integrity | Fixed: re-running an attempt used to append a duplicate set of runs (fresh uuid per run defeated `INSERT OR REPLACE`), which would have corrupted the survival curve during the harden loop. `clear_attempt` now makes an attempt a true re-run. |
-| Windows support | Fixed: `break`/`report` crashed on stock Windows consoles (cp1252 could not encode the rich emoji / report ⚡). stdout and all file I/O are now explicitly UTF-8. |
-| Tests | 110 tests, all offline, all green. |
+| Windows support | Fixed: `break`/`report` use UTF-8, and the Codex wrapper restores the elevated Windows workspace-write sandbox after `--ignore-user-config`. |
+| Codex hardening loop | Live verified and accepted. Three gatekeeper commits raised the curated support-bot score `20.6 → 41.2 → 64.7 → 100.0`; a later no-op was rejected at `100.0 → 100.0`. |
+| Tests | 112 tests, all offline, all green. |
+
+## P0 Acceptance Verification (2026-07-15)
+
+The run used authenticated Codex CLI `0.144.2` in a clean Git worktree at
+baseline commit `1862aee`. `uv` was unavailable on the Windows host PATH, so
+the equivalent venv entrypoint was invoked directly:
+
+```powershell
+.\.venv\Scripts\faultline.exe plan --path examples/support_bot
+.\.venv\Scripts\faultline.exe harden --path examples/support_bot
+.\.venv\Scripts\faultline.exe report --path examples/support_bot
+.\.venv\Scripts\faultline.exe gate --path examples/support_bot --min-score 85
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+| Acceptance item | Observed result |
+| --- | --- |
+| Fresh vulnerable baseline | `20.6/100`; both stale-data seeds refunded `ORD-1001` instead of expected `ORD-1002`. |
+| General stale-read repair | Gatekeeper commit `88c874e`; score `20.6 → 41.2`. |
+| Uncertain side-effect repair | Gatekeeper commit `a4a5ed7`; score `41.2 → 64.7`. |
+| Untrusted tool-output repair | Gatekeeper commit `5effab2`; score `64.7 → 100.0`. |
+| Golden path | Passed before every accepted commit; final `faultline gate --min-score 85` passed at `100.0`. |
+| Rejected/no-op provenance | Real Codex attempt 4 rejected and reverted at `100.0 → 100.0`; retained in the patch ledger/report. |
+| Survival curve/report | `20.6 → 41.2 → 64.7 → 100.0 → 100.0`; rendered to `examples/support_bot/.faultline/report.html`. |
+| Offline regression suite | `112 passed`. |
+
+Two convergence defects were fixed during the run: Windows `--ignore-user-config`
+had silently reduced Codex to a read-only sandbox, and the gate was reusing the
+pre-patch Python module cache. Codex verification is also isolated from the
+parent SQLite ledger so rejected attempts cannot overwrite baseline evidence.
 
 ## Path B Verification (2026-07-15)
 
@@ -64,7 +95,6 @@ All live modes remained explicit opt-ins.
 
 | Item | State |
 | --- | --- |
-| Accepted Codex hardening improvement | Still P0. Live Codex structured output and rejection paths work, but the latest generated freshness patch did not raise the score. |
 | Live-endpoint proxy verification | The LLM and MCP proxies are implemented and offline-verified (in-process transports), but have not yet been exercised against a real OpenAI endpoint / a real third-party MCP server with a live agent. Offline behavior is fully test-covered. |
 | Live LangGraph agent run | `examples/trip_planner/agent.py` is implemented but not yet run against `OPENAI_API_KEY` + the langgraph/langchain-openai extras; the scripted `naive_agent` (offline default) is fully verified. |
 
@@ -96,7 +126,7 @@ make demo-harden
 
 | Requirement | State |
 | --- | --- |
-| Working project | Offline path and Path B live integrations verified; accepted score-improving Codex hardening remains P0. |
+| Working project | Offline path, Path B live integrations, and accepted score-improving Codex hardening are verified. |
 | README | Updated with status, roadmap, demo script, and checklist. |
 | Repository URL | https://github.com/dasashreeya/faultline |
 | Demo video | TODO. Show break -> plan/report -> Codex harden -> improved report. |
