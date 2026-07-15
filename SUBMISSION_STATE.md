@@ -37,7 +37,7 @@ Last updated: 2026-07-14
 | Report | Rewritten. KPI tiles, survival curve with gate line, fault-class heat map, grade distribution, per-run evidence (fault + transcript + end state), patch ledger incl. rejected patches. Dark-mode aware, self-contained, autoescaped. |
 | Ledger integrity | Fixed: re-running an attempt used to append a duplicate set of runs (fresh uuid per run defeated `INSERT OR REPLACE`), which would have corrupted the survival curve during the harden loop. `clear_attempt` now makes an attempt a true re-run. |
 | Windows support | Fixed: `break`/`report` crashed on stock Windows consoles (cp1252 could not encode the rich emoji / report ⚡). stdout and all file I/O are now explicitly UTF-8. |
-| Tests | 42 tests, all offline, all green on `p0-hardener-convergence`. |
+| Tests | 44 tests, all offline, all green on `p0-hardener-convergence`. |
 
 ## Still Needs Live Verification
 
@@ -46,7 +46,7 @@ in the README claims these have been executed.
 
 | Item | Required credential/tool | Acceptance check |
 | --- | --- | --- |
-| `uv run pytest -q` and `make demo` exactly as README states | `uv` installed | 42 tests pass and the offline demo reproduces the planned `20.6/100` baseline on `p0-hardener-convergence`. |
+| `uv run pytest -q` and `make demo` exactly as README states | `uv` installed | 44 tests pass and the offline demo reproduces the planned `20.6/100` baseline on `p0-hardener-convergence`. |
 | `faultline plan --mode gpt` | `OPENAI_API_KEY` | GPT-5.6 emits a schema-valid attack plan. |
 | `judge.mode: llm` support-bot run | `OPENAI_API_KEY` | GPT-5.6 returns structured grades in the report. |
 | `make demo-harden` | Authenticated Codex CLI | Codex invocation and structured output work; current generated patches do not yet improve the fresh `20.6` baseline, so no patch is accepted. |
