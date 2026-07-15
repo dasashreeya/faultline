@@ -322,9 +322,10 @@ score, report, gate, subprocess isolation, plus the Codex hardener and
 gatekeeper plumbing. 45 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
-implemented and opt-in; they require credentials to exercise. Codex structured
-output and gate rejection have been exercised, but an accepted score-improving
-Codex patch is still an open P0 verification item. See
+implemented and opt-in; they require credentials to exercise. The Codex
+hardener has been live-verified in a clean checkout with an accepted climb of
+`20.6 → 76.5 → 100.0`. The generated target-agent commits are kept out of the
+baseline fixture so the offline demo still shows the original failure. See
 [`SUBMISSION_STATE.md`](SUBMISSION_STATE.md) for exactly what has and hasn't been
 run against live credentials — we'd rather tell you than have you find out.
 

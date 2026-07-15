@@ -45,11 +45,12 @@ Current verified facts:
 - `make demo`: plan -> break -> report works without an API key.
 - The clean support-bot baseline is `20.6/100` with the curated attack plan.
 - Codex structured output and the gatekeeper can be exercised live.
-- No live Codex patch has yet produced an accepted score increase; generated
-  patches that leave the score unchanged are rejected.
+- Live Codex verification succeeded in a clean detached checkout:
+  `20.6 -> 76.5 -> 100.0`. Generated target-agent commits remain outside the
+  intentionally vulnerable baseline fixture.
 
-The immediate P0 objective is therefore: produce and verify one general
-Codex-generated repair that raises the score while preserving the happy path.
+The P0 hardener objective is verified. The next objective is to preserve this
+proof while adding the live planner, judge, and anti-cheat checks.
 
 ## Workstream A: P0 Hardening Loop
 

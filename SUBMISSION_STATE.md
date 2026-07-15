@@ -49,7 +49,7 @@ in the README claims these have been executed.
 | `uv run pytest -q` and `make demo` exactly as README states | `uv` installed | 45 tests pass and the offline demo reproduces the planned `20.6/100` baseline on merged local `main`. |
 | `faultline plan --mode gpt` | `OPENAI_API_KEY` | GPT-5.6 emits a schema-valid attack plan. |
 | `judge.mode: llm` support-bot run | `OPENAI_API_KEY` | GPT-5.6 returns structured grades in the report. |
-| `make demo-harden` | Authenticated Codex CLI | Codex invocation and structured output work; current generated patches do not yet improve the fresh `20.6` baseline, so no patch is accepted. |
+| `make demo-harden` | Authenticated Codex CLI | Live-verified in a clean detached checkout: accepted Codex patches raised `20.6 → 76.5 → 100.0`. Generated target-agent commits remain outside the intentionally vulnerable baseline fixture. |
 | `FAULTLINE_ANTICHEAT=required faultline harden` | `OPENAI_API_KEY` and Codex CLI | Gate rejects overfit patches and accepts general fixes. |
 
 ## Demo Commands
