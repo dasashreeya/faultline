@@ -11,7 +11,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["rank", "scenario_id", "fault", "target", "hypothesis"],
+        "required": ["rank", "scenario_id", "fault", "target", "step_hint", "hypothesis"],
         "properties": {
           "rank": { "type": "integer" },
           "scenario_id": { "type": "string" },
@@ -19,7 +19,8 @@
           "target": { "type": "string", "description": "tool name to aim at" },
           "step_hint": { "type": ["integer", "null"] },
           "hypothesis": { "type": "string", "description": "why this will probably work — the demo's 'why' column" }
-        }
+        },
+        "additionalProperties": false
       }
     }
   }
