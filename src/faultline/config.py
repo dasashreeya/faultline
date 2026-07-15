@@ -56,7 +56,16 @@ def load_scenarios(path: Path) -> list[dict]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))["scenarios"]
 
 
-def resolve(entrypoint: str):
-    """'pkg.mod:attr' -> the attr."""
+def resolve(entrypoint: str, fresh: bool = False):
+    """Resolve ``pkg.mod:attr`` and optionally reload the target module.
+
+    The harden loop edits target source between the baseline and re-break
+    phases. A fresh resolution prevents Python's module cache from hiding that
+    patch when both phases run in one process.
+    """
     mod_name, _, attr = entrypoint.partition(":")
-    return getattr(importlib.import_module(mod_name), attr)
+    module = importlib.import_module(mod_name)
+    if fresh:
+        importlib.invalidate_caches()
+        module = importlib.reload(module)
+    return getattr(module, attr)

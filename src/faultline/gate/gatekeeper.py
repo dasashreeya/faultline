@@ -19,7 +19,9 @@ def _git(cfg: Config, *args: str) -> str:
 
 
 def revert_worktree(cfg: Config) -> None:
-    subprocess.run(["git", "-C", str(cfg.root), "checkout", "--", "."], check=False)
+    # Codex may stage files. Reset both the index and worktree so a rejected
+    # patch cannot remain partially applied or evade the next diff scan.
+    subprocess.run(["git", "-C", str(cfg.root), "reset", "--hard", "HEAD"], check=False)
 
 
 async def evaluate_patch(
@@ -29,23 +31,30 @@ async def evaluate_patch(
     Returns (accepted, reason, new_rs). Reverts the tree on rejection."""
     from faultline.run.gauntlet import run_gauntlet
 
+    def reject(reason: str) -> tuple[bool, str, float]:
+        revert_worktree(cfg)
+        if ledger is not None:
+            ledger.discard_attempt(attempt)
+        return False, reason, prev_rs
+
     ok, why = await happy_path_ok(cfg)
     if not ok:
-        revert_worktree(cfg)
-        return False, f"golden-trace gate: {why}", prev_rs
+        return reject(f"golden-trace gate: {why}")
 
-    violations = scan_patch(_git(cfg, "diff"), model=cfg.judge_model)
+    violations = scan_patch(_git(cfg, "diff", "HEAD"), model=cfg.judge_model)
     if violations:
-        revert_worktree(cfg)
-        return False, "anti-cheat gate: " + "; ".join(violations), prev_rs
+        return reject("anti-cheat gate: " + "; ".join(violations))
 
     new_rs, _ = await run_gauntlet(cfg, attempt)
     if new_rs <= prev_rs:
-        revert_worktree(cfg)
-        return False, f"improvement gate: score did not improve {prev_rs} → {new_rs}", prev_rs
+        return reject(f"improvement gate: score did not improve {prev_rs} → {new_rs}")
 
-    subprocess.run(["git", "-C", str(cfg.root), "add", "-A"], check=False)
-    subprocess.run(
+    add_result = subprocess.run(["git", "-C", str(cfg.root), "add", "-A"], check=False)
+    if getattr(add_result, "returncode", 0) != 0:
+        return reject("commit gate: git add failed")
+    commit_result = subprocess.run(
         ["git", "-C", str(cfg.root), "commit", "-q", "-m", f"harden: {summary}"], check=False
     )
+    if getattr(commit_result, "returncode", 0) != 0:
+        return reject("commit gate: git commit failed")
     return True, f"accepted: {prev_rs} → {new_rs}", new_rs

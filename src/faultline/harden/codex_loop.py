@@ -6,7 +6,9 @@ personal model pin from breaking the run (auth is unaffected).
 """
 
 import json
+import shutil
 import subprocess
+import tempfile
 from importlib import resources
 from pathlib import Path
 
@@ -38,33 +40,51 @@ def _schema_path(cfg: Config) -> Path:
 
 def run_codex(cfg: Config, dossier: dict) -> dict | None:
     """One hardening attempt. Returns the parsed PatchResult, or None on failure."""
-    out_file = cfg.state_dir / "codex_last_message.json"
-    out_file.unlink(missing_ok=True)
-    cmd = [
-        "codex",
-        "exec",
-        "-C",
-        str(cfg.root),
-        "--ignore-user-config",
-        "--sandbox",
-        "workspace-write",
-        "--skip-git-repo-check",
-        "--output-schema",
-        str(_schema_path(cfg)),
-        "-o",
-        str(out_file),
-        render_prompt(dossier),
-    ]
+    ledger_path = cfg.state_dir / "ledger.sqlite3"
+    ledger_existed = ledger_path.exists()
+    ledger_backup = None
+    if ledger_existed:
+        with tempfile.NamedTemporaryFile(prefix="faultline-ledger-", suffix=".sqlite3", delete=False) as f:
+            ledger_backup = Path(f.name)
+        shutil.copy2(ledger_path, ledger_backup)
+
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=CODEX_TIMEOUT_S)
-    except subprocess.TimeoutExpired:
-        return None
-    if not out_file.exists():
-        (cfg.state_dir / "codex_last_error.log").write_text(
-            proc.stdout + proc.stderr, encoding="utf-8"
-        )
-        return None
-    try:
-        return json.loads(out_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
+        out_file = cfg.state_dir / "codex_last_message.json"
+        out_file.unlink(missing_ok=True)
+        cmd = [
+            "codex",
+            "exec",
+            "-C",
+            str(cfg.root),
+            "--ignore-user-config",
+            "--sandbox",
+            "workspace-write",
+            "--skip-git-repo-check",
+            "--output-schema",
+            str(_schema_path(cfg)),
+            "-o",
+            str(out_file),
+            render_prompt(dossier),
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=CODEX_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            return None
+        if not out_file.exists():
+            (cfg.state_dir / "codex_last_error.log").write_text(
+                proc.stdout + proc.stderr, encoding="utf-8"
+            )
+            return None
+        try:
+            return json.loads(out_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return None
+    finally:
+        # Codex is instructed to verify its patch locally and may run Faultline
+        # commands that mutate the ledger. Restore the pre-call ledger so those
+        # self-checks cannot rewrite the baseline or survival curve.
+        if ledger_backup is not None:
+            shutil.copy2(ledger_backup, ledger_path)
+            ledger_backup.unlink(missing_ok=True)
+        else:
+            ledger_path.unlink(missing_ok=True)

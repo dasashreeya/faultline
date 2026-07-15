@@ -1,8 +1,11 @@
 """The hardener must compare patches with the source currently on disk."""
 
 import asyncio
+import json
+from types import SimpleNamespace
 
 from faultline.cli import _fresh_harden_baseline
+from faultline.harden import codex_loop
 from faultline.harden.codex_loop import render_prompt
 from faultline.ledger.store import Ledger
 
@@ -48,3 +51,32 @@ def test_hardener_prompt_requires_behavioral_verification():
     assert "supplied failing scenario" in prompt
     assert "Scenario contract and end-state oracle" in prompt
     assert "Failing seeds" in prompt
+
+
+def test_codex_verification_cannot_overwrite_faultline_ledger(tmp_path, monkeypatch):
+    state_dir = tmp_path / ".faultline"
+    state_dir.mkdir()
+    ledger_path = state_dir / "ledger.sqlite3"
+    Ledger(ledger_path).add_score(0, 20.6)
+    cfg = SimpleNamespace(root=tmp_path, state_dir=state_dir)
+
+    def fake_codex(cmd, **kwargs):
+        Ledger(ledger_path).add_score(0, 100.0)
+        output = {
+            "summary": "validate responses",
+            "strategies": ["response_validator"],
+            "files_changed": ["agent.py"],
+            "rationale": "handles malformed responses generally",
+            "risks": "fallback may surface an explicit failure",
+        }
+        output_path = cmd[cmd.index("-o") + 1]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(output, handle)
+        return SimpleNamespace(stdout="", stderr="", returncode=0)
+
+    monkeypatch.setattr(codex_loop.subprocess, "run", fake_codex)
+
+    result = codex_loop.run_codex(cfg, {"scenario_id": "F3-stale-01"})
+
+    assert result["summary"] == "validate responses"
+    assert Ledger(ledger_path).scores() == [(0, 20.6)]

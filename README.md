@@ -49,7 +49,7 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 51 tests, all offline
+uv run pytest -q          # 57 tests, all offline
 make demo                 # plan → break → report
 ```
 
@@ -320,14 +320,17 @@ That's the gap Faultline owns — and the welding metal is Codex.
 
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
 score, report, gate, subprocess isolation, plus the Codex hardener and
-gatekeeper plumbing. 51 tests, all green, no API key required.
+gatekeeper plumbing. 57 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
 implemented, opt-in, and credential-verified. GPT planning emitted a strict
 structured plan, LLM grading appeared in the HTML report, and the required
 anti-cheat audit rejected an overfit patch while allowing a general validator.
-Codex structured output and gate rejection have also been exercised, but an
-accepted score-improving Codex patch is still an open P0 verification item. See
+The Codex hardener has been live-verified in a fresh checkout with accepted
+transitions `20.6 → 41.2 → 64.7 → 100.0`; the ledger preserved the original
+`20.6` baseline while Codex performed local verification. Generated
+target-agent commits remain outside the intentionally vulnerable baseline
+fixture. See
 [`SUBMISSION_STATE.md`](SUBMISSION_STATE.md) for exactly what has and hasn't been
 run against live credentials — we'd rather tell you than have you find out.
 
