@@ -4,16 +4,33 @@
   "title": "FailureDossier",
   "description": "Everything Codex needs to harden one failing scenario cluster. Rendered into harden/prompts/hardener_prompt.md.",
   "type": "object",
-  "required": ["scenario_id", "fault_class", "fault_schedule", "run_ids", "judge_grade", "judge_reasoning", "transcript_excerpt", "end_state_diff"],
+  "required": ["scenario_id", "fault_class", "task", "scenario_contract", "fault_schedule", "run_ids", "judge_grade", "judge_reasoning", "transcript_excerpt", "end_state_diff", "failing_runs"],
   "properties": {
     "scenario_id": { "type": "string" },
     "fault_class": { "enum": ["F1", "F2", "F3", "F4", "F5"] },
+    "task": { "type": "string" },
+    "scenario_contract": { "type": "string", "description": "serialized scenario contract and end-state oracle" },
     "fault_schedule": { "$ref": "faultline/fault_schedule" },
     "run_ids": { "type": "array", "items": { "type": "string" } },
     "judge_grade": { "enum": ["A", "B", "C", "D", "E"] },
     "judge_reasoning": { "type": "string" },
     "transcript_excerpt": { "type": "string", "description": "the failing span, trimmed for the prompt" },
     "end_state_diff": { "type": "string", "description": "expected vs actual backend state" },
+    "failing_runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["seed", "grade", "reasoning", "end_state_diff"],
+        "properties": {
+          "seed": { "type": "integer" },
+          "grade": { "enum": ["A", "B", "C", "D", "E"] },
+          "reasoning": { "type": "string" },
+          "end_state_diff": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "all failing seeds for this scenario, not only the worst run"
+    },
     "planner_hypothesis": { "type": ["string", "null"] },
     "repo_hints": {
       "type": "array",

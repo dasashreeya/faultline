@@ -32,9 +32,12 @@ def test_hardener_prompt_requires_behavioral_verification():
             "scenario_id": "F3-stale-01",
             "fault_class": "F3",
             "fault_schedule": {},
+            "task": "Refund the newest order.",
+            "scenario_contract": '{"end_state": {"refunded_order": "ORD-1002"}}',
             "judge_grade": "D",
             "judge_reasoning": "wrong end state",
             "end_state_diff": "expected refund ORD-1002; actual ORD-1001",
+            "failing_runs": [{"seed": 1, "grade": "D"}],
             "transcript_excerpt": "[]",
             "repo_hints": [],
         }
@@ -43,3 +46,5 @@ def test_hardener_prompt_requires_behavioral_verification():
     assert "changes the target's outcome" in prompt
     assert "expected end state" in prompt
     assert "supplied failing scenario" in prompt
+    assert "Scenario contract and end-state oracle" in prompt
+    assert "Failing seeds" in prompt

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "faultline/attack_plan",
   "title": "AttackPlan",
-  "description": "Ranked attacks. Tier 0: hand-curated JSON. Add-back 3: GPT-5.6 planner-lite emits the same shape.",
+  "description": "Ranked attacks emitted by curated, random, or GPT planner modes. The gauntlet uses the selected attack to aim a deterministic schedule.",
   "type": "object",
   "required": ["generated_by", "attacks"],
   "properties": {

@@ -25,16 +25,47 @@ def build_dossiers(records: list[dict], scenarios: list[dict], repo_hints: list[
         if rec["judge"]["weight"] >= 1.0:
             continue  # scenario survived; nothing to harden
         fault_id = rec["fault_schedule"]["entries"][0]["fault"]
+        scenario = by_id[sid]
+        failing_runs = [
+            {
+                "seed": run["seed"],
+                "grade": run["judge"]["grade"],
+                "reasoning": run["judge"]["reasoning"],
+                "end_state_diff": _end_state_diff(scenario, run),
+            }
+            for run in records
+            if run["scenario_id"] == sid and run["judge"]["weight"] < 1.0
+        ]
         dossiers.append(
             {
                 "scenario_id": sid,
                 "fault_class": TIER0_FAULTS[fault_id].fault_class,
+                "task": scenario.get("task", ""),
+                "scenario_contract": json.dumps(
+                    {
+                        key: scenario.get(key)
+                        for key in (
+                            "id",
+                            "task",
+                            "tools",
+                            "fault_pool",
+                            "fault_targets",
+                            "fault_step",
+                            "max_steps",
+                            "end_state",
+                        )
+                        if key in scenario
+                    },
+                    indent=2,
+                    sort_keys=True,
+                ),
                 "fault_schedule": rec["fault_schedule"],
                 "run_ids": [r["run_id"] for r in records if r["scenario_id"] == sid],
                 "judge_grade": rec["judge"]["grade"],
                 "judge_reasoning": rec["judge"]["reasoning"],
                 "transcript_excerpt": json.dumps(rec["transcript"][-15:], indent=1, default=str),
                 "end_state_diff": _end_state_diff(by_id[sid], rec),
+                "failing_runs": failing_runs,
                 "planner_hypothesis": rec.get("planner_hypothesis"),
                 "repo_hints": repo_hints,
             }

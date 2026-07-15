@@ -17,3 +17,21 @@ def test_public_and_packaged_patch_result_schemas_match():
     packaged = json.loads((REPO / "src/faultline/harden/patch_result.schema.json").read_text())
 
     assert public == packaged
+
+
+def test_public_contract_schemas_are_well_formed():
+    schemas = sorted((REPO / "schemas").glob("*.schema.json"))
+    ids = []
+    for path in schemas:
+        schema = json.loads(path.read_text())
+        ids.append(schema["$id"])
+        assert set(schema["required"]).issubset(schema["properties"])
+
+    assert len(ids) == len(set(ids))
+    assert {path.stem.removesuffix(".schema") for path in schemas} == {
+        "attack_plan",
+        "dossier",
+        "fault_schedule",
+        "patch_result",
+        "run_record",
+    }

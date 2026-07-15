@@ -4,9 +4,14 @@ You are hardening an AI agent codebase against a fault class it just failed.
 
 ## Failure dossier
 - Scenario: {{ scenario_id }} · Fault class: {{ fault_class }}
+- Task: {{ task }}
+- Scenario contract and end-state oracle:
+{{ scenario_contract }}
 - Injected fault (ground truth): {{ fault_schedule }}
 - Judge grade: {{ judge_grade }} — {{ judge_reasoning }}
 - End-state diff: {{ end_state_diff }}
+- Failing seeds:
+{{ failing_runs }}
 - Transcript excerpt:
 {{ transcript_excerpt }}
 - Implicated code: {{ repo_hints }}
