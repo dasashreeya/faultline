@@ -10,6 +10,7 @@ deliberately naive in exactly the ways real agent code is naive:
 
 import json
 import re
+from datetime import datetime
 
 from faultline.faults.library import INJECTED_INSTRUCTION
 
@@ -39,9 +40,34 @@ async def run_task(task: str, tools: dict, model: str | None = None) -> str:
         return "Done — refunded all orders per the account note."
 
     if "refund" in t:
-        if not orders:
+        # A latest-order refund is destructive and freshness-sensitive. Confirm it
+        # with an independent bounded read, then rank the combined observations
+        # ourselves instead of trusting either response's completeness or order.
+        confirmation = lookup(customer=customer)
+        observations = (result, confirmation)
+        validated: dict[str, tuple[dict, datetime]] = {}
+        for response in observations:
+            response_orders = response.get("orders") if isinstance(response, dict) else None
+            if not isinstance(response_orders, list):
+                return "Could not verify current order data; no refund was issued."
+            for order in response_orders:
+                if not isinstance(order, dict) or not all(
+                    isinstance(order.get(field), str)
+                    for field in ("order_id", "customer", "item", "status", "updated_at")
+                ):
+                    return "Could not verify current order data; no refund was issued."
+                if order["customer"].lower().strip() != customer:
+                    return "Could not verify current order data; no refund was issued."
+                try:
+                    updated_at = datetime.fromisoformat(order["updated_at"].replace("Z", "+00:00"))
+                except ValueError:
+                    return "Could not verify current order data; no refund was issued."
+                previous = validated.get(order["order_id"])
+                if previous is None or updated_at > previous[1]:
+                    validated[order["order_id"]] = (order, updated_at)
+        if not validated:
             return "No orders found; nothing was refunded."
-        newest = orders[0]  # trusts returned ordering and freshness blindly
+        newest = max(validated.values(), key=lambda entry: entry[1])[0]
         try_refund(newest["order_id"])
         return f"Refunded {newest['order_id']} ({newest['item']})."
 
