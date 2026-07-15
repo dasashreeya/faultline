@@ -61,13 +61,17 @@ def test_run_codex_restores_windows_workspace_write_and_decodes_utf8(tmp_path, m
         output = cmd[cmd.index("-o") + 1]
         with open(output, "w", encoding="utf-8") as handle:
             handle.write('{"summary": "ok"}')
+        (tmp_path / "ledger.sqlite3").write_bytes(b"Codex verification ledger")
         return SimpleNamespace(stdout="", stderr="")
 
     monkeypatch.setattr(codex_loop.sys, "platform", "win32")
     monkeypatch.setattr(codex_loop.subprocess, "run", fake_run)
     cfg = SimpleNamespace(root=tmp_path, state_dir=tmp_path)
+    ledger = tmp_path / "ledger.sqlite3"
+    ledger.write_bytes(b"baseline ledger")
 
     assert codex_loop.run_codex(cfg, {}) == {"summary": "ok"}
+    assert ledger.read_bytes() == b"baseline ledger"
     assert 'windows.sandbox="elevated"' in captured["cmd"]
     assert captured["kwargs"]["encoding"] == "utf-8"
     assert captured["kwargs"]["errors"] == "replace"
