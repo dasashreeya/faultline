@@ -49,7 +49,7 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 45 tests, all offline
+uv run pytest -q          # 52 tests, all offline
 make demo                 # plan → break → report
 ```
 
@@ -226,7 +226,8 @@ semantic faults are what actually kill agents in production.
 Every live path is **opt-in**. The default configuration is fully offline and
 deterministic, so judging costs nothing and cannot flake.
 
-To enable the live paths, set `OPENAI_API_KEY` and edit
+To enable the live paths, set `OPENAI_API_KEY` (a repository-root `.env` is
+loaded automatically without overriding an exported or CI value) and edit
 `examples/support_bot/faultline.yaml`:
 
 ```yaml
@@ -243,7 +244,7 @@ judge:
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: ./action
+- uses: dasashreeya/faultline/action@<commit-sha>
   with:
     path: examples/support_bot
     min-score: "85"
@@ -319,13 +320,15 @@ That's the gap Faultline owns — and the welding metal is Codex.
 
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
 score, report, gate, subprocess isolation, plus the Codex hardener and
-gatekeeper plumbing. 45 tests, all green, no API key required.
+gatekeeper plumbing. 52 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
-implemented and opt-in; they require credentials to exercise. The Codex
-hardener has been live-verified in a clean checkout with an accepted climb of
-`20.6 → 76.5 → 100.0`. The generated target-agent commits are kept out of the
-baseline fixture so the offline demo still shows the original failure. See
+implemented, opt-in, and credential-verified. GPT planning emitted a strict
+structured plan, LLM grading appeared in the HTML report, and the required
+anti-cheat audit rejected an overfit patch while allowing a general validator.
+The Codex hardener has been live-verified in a clean checkout with an accepted
+climb of `20.6 → 76.5 → 100.0`. Generated target-agent commits remain outside
+the intentionally vulnerable baseline fixture. See
 [`SUBMISSION_STATE.md`](SUBMISSION_STATE.md) for exactly what has and hasn't been
 run against live credentials — we'd rather tell you than have you find out.
 

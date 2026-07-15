@@ -28,18 +28,18 @@ runs:
 
     - name: Install project
       shell: bash
-      run: uv sync
+      run: uv sync --project "${GITHUB_ACTION_PATH}/.."
 
     - name: Run Faultline gauntlet
       if: ${{ inputs.run-break == 'true' }}
       shell: bash
-      run: uv run faultline break --path "${{ inputs.path }}"
+      run: uv run --project "${GITHUB_ACTION_PATH}/.." faultline break --path "${{ inputs.path }}"
 
     - name: Render Faultline report
       if: ${{ inputs.run-break == 'true' }}
       shell: bash
-      run: uv run faultline report --path "${{ inputs.path }}"
+      run: uv run --project "${GITHUB_ACTION_PATH}/.." faultline report --path "${{ inputs.path }}"
 
     - name: Enforce Resilience Score gate
       shell: bash
-      run: uv run faultline gate --path "${{ inputs.path }}" --min-score "${{ inputs.min-score }}"
+      run: uv run --project "${GITHUB_ACTION_PATH}/.." faultline gate --path "${{ inputs.path }}" --min-score "${{ inputs.min-score }}"

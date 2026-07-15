@@ -76,7 +76,6 @@ def _gpt_violations(diff: str, model: str) -> list[str]:
     }
     resp = OpenAI().responses.create(
         model=model,
-        temperature=0,
         input=[
             {"role": "system", "content": "You are Faultline's adversarial patch auditor."},
             {"role": "user", "content": json.dumps(prompt)},
