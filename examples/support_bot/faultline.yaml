@@ -2,7 +2,9 @@
 # Sandbox default: scripted naive agent + detectors-only judge. The loop runs
 # fully offline. Flip to the commented values for the live OpenAI path.
 target:
-  agent: examples.support_bot.naive_agent:run_task
+  # Keep the public demo intentionally vulnerable so plan -> break -> harden
+  # remains reproducible. naive_agent.py contains the accepted hardened repair.
+  agent: examples.support_bot.vulnerable_agent:run_task
   # agent: examples.support_bot.agent:run_task     # OpenAI Agents SDK (needs OPENAI_API_KEY)
   tools: examples.support_bot.tools:build_tools
   reset: examples.support_bot.tools:reset_backend

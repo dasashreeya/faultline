@@ -49,7 +49,7 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 118 tests, all offline
+uv run pytest -q          # 119 tests, all offline
 make demo                 # plan → break → report
 ```
 
@@ -65,11 +65,11 @@ no spend**. Judges can reproduce every number for free.
 
 ## What you'll see
 
-The bundled support bot began naive in exactly the ways real agent code is
-naive: it trusted tool results blindly and retried side effects without
-idempotency. The accepted Codex hardening run repaired those behaviors. The
-baseline below is the recorded pre-hardening run at commit `1862aee`; the
-current source scores `100.0/100` against the same curated plan.
+The bundled support-bot demo deliberately points at
+`examples/support_bot/vulnerable_agent.py`, so the failure and hardening story
+is reproducible from a fresh checkout. `naive_agent.py` preserves the accepted
+Codex-hardened implementation as a reference. The baseline below is the
+recorded pre-hardening run at `20.6/100`.
 
 ```
                         Faultline gauntlet — attempt 0
@@ -102,10 +102,10 @@ patch ledger underneath — **including rejected patches**. Honesty is a feature
 Fixed fault templates fired at random mostly miss. Faultline's planner reads
 the repo (tool signatures, error handling, retry config, prompts) and aims.
 
-The pre-hardening planner result remains pinned by an offline regression test:
+Reproduce this yourself — one command, no API key:
 
 ```bash
-uv run pytest tests/test_plan_steering.py::test_planned_chaos_beats_blind_chaos -q
+uv run faultline eval-plan --path examples/support_bot
 ```
 
 |                                | Resilience Score | Critical failures (D/E) |
@@ -353,7 +353,7 @@ That's the gap Faultline owns — and the welding metal is Codex.
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
 score, report, gate, subprocess isolation, all three injection surfaces (tool,
 LLM proxy, MCP proxy), both example agents, plus the Codex hardener and
-gatekeeper plumbing. 118 tests, all green, no API key required.
+gatekeeper plumbing. 119 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
 implemented, opt-in, and credential-verified. GPT planning emitted a strict
@@ -361,7 +361,10 @@ structured plan, LLM grading appeared in the HTML report, and the required
 anti-cheat audit rejected an overfit patch while allowing a general validator.
 Codex structured output, gate rejection, and the full accepted hardening loop
 have been exercised live. Three gatekeeper commits raised the curated support
-bot score from `20.6` to `100.0` while preserving golden scenarios. See
+bot score from `20.6` to `100.0` while preserving golden scenarios. The public
+demo remains intentionally vulnerable so that `make demo` and `make demo-harden`
+can reproduce that workflow; the hardened implementation is retained in
+`examples/support_bot/naive_agent.py`. See
 [`SUBMISSION_STATE.md`](SUBMISSION_STATE.md) for exactly what has and hasn't been
 run against live credentials — we'd rather tell you than have you find out.
 
