@@ -91,15 +91,18 @@ All live modes remained explicit opt-ins.
 | Required audit with key | Disposable one-attempt `FAULTLINE_ANTICHEAT=required faultline harden` with the key present | GPT audit completed; the patch then failed the monotonic gate because the score stayed `28.8 -> 28.8`. The rejection remained in the ledger. |
 | Codex hardener | `make demo-harden` in a fresh detached checkout with authenticated Codex CLI | Clean ledger recorded `(0, 20.6), (1, 20.6), (2, 41.2), (3, 64.7), (4, 100.0)`; accepted Codex patches raised the score `20.6 → 41.2 → 64.7 → 100.0`. Generated target-agent commits remain outside the intentionally vulnerable baseline fixture. |
 | Composite Action | Clean isolated consumer workspace: sync action project, `break`, `report`, `gate --min-score 20` | Passed at `28.8/100`; report existed. The action now runs from `${GITHUB_ACTION_PATH}/..`, fixing external-repo consumption. |
-| Hosted workflow | `.github/workflows/faultline-gate.yml` | Existing GitHub-hosted run `29390728477` passed on 2026-07-15 at SHA `f793e1a`; a fresh hosted run is expected after the direct `main` push. |
+| Hosted workflow | `.github/workflows/faultline-gate.yml` | Manual dispatch run `29447160856` passed on 2026-07-15 at SHA `e087de1` (`https://github.com/dasashreeya/faultline/actions/runs/29447160856`). |
+| Live LLM proxy smoke | `uv run --extra proxy faultline serve-proxy --fault llm_rate_limit` plus a real local HTTP request | Uvicorn served the proxy and returned the expected `429` response without contacting an upstream. |
+| Live MCP stdio smoke | `serve_stdio` with a temporary child JSON-RPC server and a `stale_data` schedule | The newline-delimited proxy path changed a two-order response into the expected stale single-order response. |
+| LangGraph local live smoke | `uv run --with langgraph --with langchain-openai` against a local OpenAI-compatible mock | `examples/trip_planner/agent.py` completed a real two-call LangGraph ReAct run through the adapter; no external API was contacted. |
 
 ## Still Open
 
 | Item | State |
 | --- | --- |
-| Hosted verification of the latest action changes | Requires observing a fresh GitHub-hosted run after this direct push. |
-| Live-endpoint proxy verification | The LLM and MCP proxies are implemented and offline-verified (in-process transports), but have not yet been exercised against a real OpenAI endpoint / a real third-party MCP server with a live agent. Offline behavior is fully test-covered. |
-| Live LangGraph agent run | `examples/trip_planner/agent.py` is implemented but not yet run against `OPENAI_API_KEY` + the langgraph/langchain-openai extras; the scripted `naive_agent` (offline default) is fully verified. |
+| Hosted verification of the latest action changes | Complete. Manual dispatch run `29447160856` passed on `main` at SHA `e087de1`. |
+| Live-endpoint proxy verification | Local live Uvicorn and MCP stdio paths passed. Validation against a real OpenAI endpoint and a real third-party MCP server remains pending; `OPENAI_API_KEY` is absent and no third-party MCP server command is configured. |
+| Live LangGraph agent run | The real LangGraph agent completed against a local OpenAI-compatible mock with ephemeral extras. A real OpenAI run remains pending until `OPENAI_API_KEY` is supplied locally; the scripted `naive_agent` path is fully verified offline. |
 
 ## Demo Commands
 
