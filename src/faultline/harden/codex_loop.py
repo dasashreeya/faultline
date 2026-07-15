@@ -7,6 +7,7 @@ personal model pin from breaking the run (auth is unaffected).
 
 import json
 import subprocess
+import sys
 from importlib import resources
 from pathlib import Path
 
@@ -46,17 +47,34 @@ def run_codex(cfg: Config, dossier: dict) -> dict | None:
         "-C",
         str(cfg.root),
         "--ignore-user-config",
-        "--sandbox",
-        "workspace-write",
-        "--skip-git-repo-check",
-        "--output-schema",
-        str(_schema_path(cfg)),
-        "-o",
-        str(out_file),
-        render_prompt(dossier),
     ]
+    if sys.platform == "win32":
+        # The Windows workspace-write sandbox is selected by this platform
+        # setting. --ignore-user-config intentionally drops personal model
+        # pins, but without restoring this one setting Codex silently falls
+        # back to read-only and returns a structured no-op patch.
+        cmd.extend(["-c", 'windows.sandbox="elevated"'])
+    cmd.extend(
+        [
+            "--sandbox",
+            "workspace-write",
+            "--skip-git-repo-check",
+            "--output-schema",
+            str(_schema_path(cfg)),
+            "-o",
+            str(out_file),
+            render_prompt(dossier),
+        ]
+    )
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=CODEX_TIMEOUT_S)
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=CODEX_TIMEOUT_S,
+        )
     except subprocess.TimeoutExpired:
         return None
     if not out_file.exists():

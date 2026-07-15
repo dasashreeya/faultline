@@ -1,8 +1,10 @@
 """The hardener must compare patches with the source currently on disk."""
 
 import asyncio
+from types import SimpleNamespace
 
 from faultline.cli import _fresh_harden_baseline
+from faultline.harden import codex_loop
 from faultline.harden.codex_loop import render_prompt
 from faultline.ledger.store import Ledger
 
@@ -48,3 +50,24 @@ def test_hardener_prompt_requires_behavioral_verification():
     assert "supplied failing scenario" in prompt
     assert "Scenario contract and end-state oracle" in prompt
     assert "Failing seeds" in prompt
+
+
+def test_run_codex_restores_windows_workspace_write_and_decodes_utf8(tmp_path, monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        captured["kwargs"] = kwargs
+        output = cmd[cmd.index("-o") + 1]
+        with open(output, "w", encoding="utf-8") as handle:
+            handle.write('{"summary": "ok"}')
+        return SimpleNamespace(stdout="", stderr="")
+
+    monkeypatch.setattr(codex_loop.sys, "platform", "win32")
+    monkeypatch.setattr(codex_loop.subprocess, "run", fake_run)
+    cfg = SimpleNamespace(root=tmp_path, state_dir=tmp_path)
+
+    assert codex_loop.run_codex(cfg, {}) == {"summary": "ok"}
+    assert 'windows.sandbox="elevated"' in captured["cmd"]
+    assert captured["kwargs"]["encoding"] == "utf-8"
+    assert captured["kwargs"]["errors"] == "replace"
