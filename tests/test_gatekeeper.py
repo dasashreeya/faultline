@@ -1,4 +1,6 @@
 import asyncio
+import sys
+from types import ModuleType
 from types import SimpleNamespace
 
 from faultline.gate import gatekeeper
@@ -60,3 +62,27 @@ def test_improved_score_is_accepted_and_committed(monkeypatch):
     assert reason == "accepted: 28.8 \u2192 43.5"
     assert commits[0][:4] == ["git", "-C", ".", "add"]
     assert commits[1][:4] == ["git", "-C", ".", "commit"]
+
+
+def test_target_modules_are_evicted_before_patch_evaluation(monkeypatch):
+    cfg = SimpleNamespace(
+        agent_entrypoint="examples.support_bot.naive_agent:run_task",
+        tools_entrypoint="examples.support_bot.tools:build_tools",
+        reset_entrypoint="examples.support_bot.tools:reset_backend",
+        snapshot_entrypoint="examples.support_bot.tools:snapshot",
+    )
+    target_modules = (
+        "examples.support_bot",
+        "examples.support_bot.naive_agent",
+        "examples.support_bot.tools",
+        "examples.support_bot.backend",
+    )
+    for name in target_modules:
+        monkeypatch.setitem(sys.modules, name, ModuleType(name))
+    unrelated = ModuleType("examples.trip_planner.agent")
+    monkeypatch.setitem(sys.modules, "examples.trip_planner.agent", unrelated)
+
+    gatekeeper.refresh_target_imports(cfg)
+
+    assert all(name not in sys.modules for name in target_modules)
+    assert sys.modules["examples.trip_planner.agent"] is unrelated

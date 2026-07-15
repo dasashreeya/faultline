@@ -3,7 +3,9 @@ improves — otherwise the working tree is reverted. Discarded attempts stay
 in the ledger; honesty in the report is a feature.
 """
 
+import importlib
 import subprocess
+import sys
 
 from faultline.config import Config
 from faultline.gate.anticheat import scan_patch
@@ -22,6 +24,22 @@ def revert_worktree(cfg: Config) -> None:
     subprocess.run(["git", "-C", str(cfg.root), "checkout", "--", "."], check=False)
 
 
+def refresh_target_imports(cfg: Config) -> None:
+    """Make the gate execute the patch on disk, not pre-patch cached modules."""
+    entrypoints = (
+        getattr(cfg, "agent_entrypoint", ""),
+        getattr(cfg, "tools_entrypoint", ""),
+        getattr(cfg, "reset_entrypoint", ""),
+        getattr(cfg, "snapshot_entrypoint", ""),
+    )
+    modules = {entrypoint.partition(":")[0] for entrypoint in entrypoints if entrypoint}
+    prefixes = {module.rpartition(".")[0] or module for module in modules}
+    for loaded in list(sys.modules):
+        if any(loaded == prefix or loaded.startswith(prefix + ".") for prefix in prefixes):
+            sys.modules.pop(loaded, None)
+    importlib.invalidate_caches()
+
+
 async def evaluate_patch(
     cfg: Config, ledger: Ledger, attempt: int, prev_rs: float, summary: str
 ) -> tuple[bool, str, float]:
@@ -29,6 +47,7 @@ async def evaluate_patch(
     Returns (accepted, reason, new_rs). Reverts the tree on rejection."""
     from faultline.run.gauntlet import run_gauntlet
 
+    refresh_target_imports(cfg)
     ok, why = await happy_path_ok(cfg)
     if not ok:
         revert_worktree(cfg)
