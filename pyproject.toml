@@ -16,6 +16,12 @@ dependencies = [
     "python-dotenv>=1.0",
 ]
 
+[project.optional-dependencies]
+# Only needed to *serve* the live LLM proxy; the fault core and its tests run
+# without it (httpx.ASGITransport drives the app in-process). Keeps the offline
+# install lean.
+proxy = ["uvicorn>=0.30"]
+
 [project.scripts]
 faultline = "faultline.cli:app"
 

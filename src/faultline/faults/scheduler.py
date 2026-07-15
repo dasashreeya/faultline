@@ -14,6 +14,26 @@ def _rng(seed: int, scenario_id: str) -> random.Random:
     return random.Random(f"{seed}:{scenario_id}")
 
 
+def resolve_fault(fault_id: str) -> Fault | None:
+    """Look a fault up across every surface's registry (tool and LLM).
+
+    Kept lazy so the scheduler doesn't import the interception package at
+    module load — the two only meet through this one function.
+    """
+    if fault_id in TIER0_FAULTS:
+        return TIER0_FAULTS[fault_id]
+    from faultline.intercept.faults_llm import LLM_FAULTS
+
+    return LLM_FAULTS.get(fault_id)
+
+
+def fault_surface(fault_id: str) -> str:
+    """Which injection surface a fault fires on: 'llm' or 'tool'/'mcp'."""
+    from faultline.intercept.faults_llm import is_llm_fault
+
+    return "llm" if is_llm_fault(fault_id) else "tool"
+
+
 def attack_for(plan: dict | None, scenario_id: str) -> dict | None:
     """The planner's best-ranked attack against this scenario, if it named one.
 
@@ -41,21 +61,33 @@ def build_schedule(scenario: dict, seed: int, attack: dict | None = None) -> dic
     plan left unspecified, so a planned gauntlet is just as reproducible.
     """
     rng = _rng(seed, scenario["id"])
-    pool: list[Fault] = [TIER0_FAULTS[fid] for fid in scenario.get("fault_pool", TIER0_FAULTS)]
+    pool_ids = list(scenario.get("fault_pool", TIER0_FAULTS))
+    pool: list[Fault] = [f for f in (resolve_fault(fid) for fid in pool_ids) if f is not None]
+    if not pool:  # a scenario with an all-unknown pool degrades to the tool library
+        pool = list(TIER0_FAULTS.values())
     fault = rng.choice(sorted(pool, key=lambda f: f.id))
     targets = sorted(scenario.get("fault_targets", scenario["tools"]))
+    # Always draw the target, even for LLM faults, so a tool-surface scenario's
+    # RNG sequence is byte-for-byte what it was before LLM faults existed.
     target = rng.choice(targets)
     step = int(scenario.get("fault_step", 0))
 
     if attack:
         # The plan may name a fault we don't ship, or a tool this scenario
         # doesn't use — ignore those rather than crash the gauntlet on a bad plan.
-        if attack.get("fault") in TIER0_FAULTS:
-            fault = TIER0_FAULTS[attack["fault"]]
-        if attack.get("target") in scenario["tools"]:
+        resolved = resolve_fault(attack.get("fault", ""))
+        if resolved is not None:
+            fault = resolved
+        if attack.get("target") in scenario.get("tools", []):
             target = attack["target"]
         if attack.get("step_hint") is not None:
             step = int(attack["step_hint"])
+
+    # The surface follows the fault: an LLM fault fires on the model endpoint,
+    # so its target is the 'llm' surface, not a named tool.
+    surface = fault_surface(fault.id)
+    if surface == "llm":
+        target = "llm"
 
     return {
         "scenario_id": scenario["id"],
@@ -63,7 +95,7 @@ def build_schedule(scenario: dict, seed: int, attack: dict | None = None) -> dic
         "entries": [
             {
                 "step": step,
-                "surface": "tool",
+                "surface": surface,
                 "target": target,
                 "fault": fault.id,
                 "params": fault.params,

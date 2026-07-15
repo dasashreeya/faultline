@@ -374,5 +374,74 @@ def gate(path: Path = PathOpt, min_score: float = typer.Option(None, "--min-scor
     console.print(f"[green]RS {rs} ≥ {threshold} — gate passed[/green]")
 
 
+@app.command()
+def faults() -> None:
+    """List the fault library across every injection surface."""
+    from faultline.faults.library import TIER0_FAULTS
+    from faultline.intercept.faults_llm import LLM_FAULTS
+    from faultline.score.resilience import CLASS_LABELS
+
+    table = Table(title="Faultline fault library")
+    for col in ("id", "class", "surface", "what it does"):
+        table.add_column(col, overflow="fold")
+    everything = list(TIER0_FAULTS.values()) + list(LLM_FAULTS.values())
+    for fault in sorted(everything, key=lambda f: (f.fault_class, f.id)):
+        surface = "llm" if fault.id in LLM_FAULTS else "tool / mcp"
+        label = CLASS_LABELS.get(fault.fault_class, fault.fault_class)
+        table.add_row(fault.id, f"{fault.fault_class} · {label}", surface, fault.description)
+    console.print(table)
+
+
+@app.command(name="serve-proxy")
+def serve_proxy(
+    upstream: str = typer.Option(
+        None, "--upstream", help="Real model endpoint base (default: $OPENAI_BASE_URL or api.openai.com)"
+    ),
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(8787, "--port"),
+    fault: str = typer.Option(None, "--fault", help="LLM fault id to inject (e.g. llm_rate_limit)"),
+    step: int = typer.Option(0, "--step", help="Which chat-completion call the fault hits"),
+) -> None:
+    """Serve the OpenAI-compatible fault-injecting proxy for a live agent.
+
+    Point your agent's base_url at the printed URL. With no --fault the proxy is
+    a transparent passthrough (useful for confirming your wiring first).
+    """
+    import os
+
+    from faultline.intercept.faults_llm import LLM_FAULTS
+    from faultline.intercept.llm_proxy import DEFAULT_UPSTREAM, LLMFaultProxy, serve
+
+    upstream = upstream or os.getenv("OPENAI_BASE_URL") or DEFAULT_UPSTREAM
+    schedule = None
+    if fault:
+        if fault not in LLM_FAULTS:
+            console.print(
+                f"[red]'{fault}' is not an LLM-surface fault.[/red] Run "
+                f"[bold]faultline faults[/bold] to see the choices."
+            )
+            raise typer.Exit(1)
+        schedule = {
+            "scenario_id": "serve-proxy",
+            "seed": 0,
+            "entries": [{"step": step, "surface": "llm", "target": "llm", "fault": fault}],
+        }
+
+    proxy = LLMFaultProxy(upstream=upstream, schedule=schedule)
+    console.print(f"[bold]Faultline LLM proxy[/bold] → forwarding to {upstream}")
+    console.print(f"point your agent at [bold]http://{host}:{port}/v1[/bold]")
+    if fault:
+        console.print(f"injecting [bold]{fault}[/bold] on call #{step}")
+    else:
+        console.print("[dim]transparent passthrough (no --fault given)[/dim]")
+    try:
+        serve(proxy, host=host, port=port)
+    except RuntimeError as exc:  # uvicorn not installed
+        from rich.markup import escape
+
+        console.print(f"[red]{escape(str(exc))}[/red]")
+        raise typer.Exit(1) from exc
+
+
 if __name__ == "__main__":
     app()

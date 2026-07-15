@@ -6,7 +6,7 @@ import json
 
 from jinja2 import Template
 
-from faultline.faults.library import TIER0_FAULTS
+from faultline.faults.scheduler import resolve_fault
 from faultline.judge.rubric import GRADE_WEIGHTS
 from faultline.ledger.store import Ledger
 from faultline.score.curves import curve_svg, survival_curve
@@ -235,7 +235,7 @@ def _run_rows(runs: list[dict]) -> list[dict]:
     for r in sorted(runs, key=lambda r: (r["attempt"], r["scenario_id"], r["seed"])):
         entries = r.get("fault_schedule", {}).get("entries") or []
         fault_id = entries[0]["fault"] if entries else None
-        fault = TIER0_FAULTS.get(fault_id) if fault_id else None
+        fault = resolve_fault(fault_id) if fault_id else None
         rows.append(
             {
                 "attempt": r["attempt"],

@@ -49,7 +49,7 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 51 tests, all offline
+uv run pytest -q          # 110 tests, all offline
 make demo                 # plan → break → report
 ```
 
@@ -173,6 +173,8 @@ faultline break                 # run the gauntlet, grade every run, score it
 faultline harden                # the Codex loop: dossier → patch → gate → re-break
 faultline report                # static HTML: curve, heat map, runs, patch ledger
 faultline gate --min-score 85   # CI gate; exits non-zero below the threshold
+faultline faults                # list the fault library across every surface
+faultline serve-proxy           # OpenAI-compatible fault-injecting proxy (live agents)
 ```
 
 `break` automatically aims faults with `attack_plan.json` when one exists; pass
@@ -180,17 +182,37 @@ faultline gate --min-score 85   # CI gate; exits non-zero below the threshold
 
 ---
 
+## Three injection surfaces
+
+Faults enter below the agent, wherever the agent is weakest. Same fault library,
+three framework-agnostic surfaces — run `faultline faults` to see them all.
+
+- **Tool surface** — wraps the target's tool callables (OpenAI Agents SDK,
+  LangGraph, or plain functions). The default; F2–F5 faults inject here.
+- **LLM surface** (`faultline serve-proxy`) — an OpenAI-compatible proxy your
+  agent points `base_url` at. It forwards to the real model endpoint and injects
+  F1 transport faults on the way back: 429/500 storms, context-limit errors,
+  empty completions, truncated answers, mid-stream cutoffs, garbage tokens.
+  Works with any framework that speaks the OpenAI chat wire format.
+- **MCP surface** — a JSON-RPC man-in-the-middle for *MCP servers you don't
+  control*: it corrupts `tools/call` results in flight (stale data, empty
+  results, schema drift, embedded instructions) using the same fault library.
+
+Both proxies are deterministic and driven by the same seeded fault schedule, and
+both are exercised entirely offline in the test suite (`httpx.ASGITransport` for
+the LLM proxy, an in-memory JSON-RPC server for MCP) — no network, no API key.
+
 ## Fault library
 
-Thirteen faults across five classes. The semantic ones are the point.
+Faults across five classes. The semantic ones are the point.
 
 | Class  | Surface             | Faults                                                              |
 | ------ | ------------------- | ------------------------------------------------------------------- |
-| **F1** | LLM transport       | empty completion                                                    |
+| **F1** | LLM transport       | 500 / 429 / context-overflow, empty / truncated / garbage / cutoff  |
 | **F2** | Tool transport      | timeout, flapping (lands then loses the response), rate limit, auth |
-| **F3** | Tool semantics      | **stale data**, empty result, malformed JSON, type drift            |
-| **F4** | Schema / contract   | schema drift, missing required field                                |
-| **F5** | Context / cognitive | **injected instruction**, contradictory results                     |
+| **F3** | Tool semantics      | **stale data**, empty result, partial, null fields, malformed JSON  |
+| **F4** | Schema / contract   | schema drift (camelCase), malformed envelope                        |
+| **F5** | Context / cognitive | **injected instruction**, exfiltration prompt                       |
 
 **Stale data** is the crown jewel: nothing errors, the values are plausible, the
 timestamp is old, and the answer is quietly wrong. No infrastructure chaos tool
@@ -261,7 +283,11 @@ and fails the job when the Resilience Score drops below the gate. See
 ```text
 schemas/                  frozen JSON contracts between every subsystem
 src/faultline/
-  intercept/              fault injection below the agent framework
+  intercept/              three injection surfaces below the agent framework:
+                            adapters/  tool wrappers (OpenAI Agents SDK, LangGraph)
+                            llm_proxy  OpenAI-compatible F1 proxy
+                            mcp_proxy  MCP JSON-RPC man-in-the-middle
+                            faults_llm F1 LLM-transport fault core
   faults/                 fault library + seeded (deterministic) scheduler
   plan/                   repo digest → ranked attack plan
   run/                    gauntlet runner, subprocess isolation, budgets
@@ -270,13 +296,15 @@ src/faultline/
   harden/                 failure dossier + headless Codex loop
   gate/                   golden traces, anti-cheat, monotone score gate
   ledger/                 SQLite run store + static HTML report
-examples/support_bot/     the intentionally-fragile demo agent
+examples/support_bot/     the intentionally-fragile demo agent (OpenAI Agents SDK)
+examples/trip_planner/    second domain, LangGraph — booking, F2 flapping + F4 drift
 action/                   GitHub Action wrapping `faultline gate`
 ```
 
-Faults are injected on the **tool surface, below the agent framework**, so the
-same fault library works against the OpenAI Agents SDK, a scripted agent, or
-anything else that calls tools.
+Faults are injected **below the agent framework** on whichever surface it's
+weakest — tools, the model endpoint, or an MCP server — so the same fault
+library works against the OpenAI Agents SDK, LangGraph, a scripted agent, or
+anything else that calls tools or speaks the OpenAI wire format.
 
 Runs can be isolated in killable child processes (`isolation: subprocess` in
 `faultline.yaml`) — faulted agents *will* hang, and a sync tool stuck in a
@@ -319,8 +347,9 @@ That's the gap Faultline owns — and the welding metal is Codex.
 ## Status
 
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
-score, report, gate, subprocess isolation, plus the Codex hardener and
-gatekeeper plumbing. 51 tests, all green, no API key required.
+score, report, gate, subprocess isolation, all three injection surfaces (tool,
+LLM proxy, MCP proxy), both example agents, plus the Codex hardener and
+gatekeeper plumbing. 110 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
 implemented, opt-in, and credential-verified. GPT planning emitted a strict

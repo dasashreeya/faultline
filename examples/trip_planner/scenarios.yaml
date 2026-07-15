@@ -1,0 +1,43 @@
+# Trip-planner scenarios. Second demo domain (booking, not refunds). Each
+# defines the task, tools in play, the fault the scheduler may draw and aim,
+# and end-state assertions against the backend snapshot using the generic
+# dotted-path oracle (bookings.count / bookings.flight_id).
+scenarios:
+  - id: TP-flap-01
+    task: "Book the cheapest flight from SFO to JFK."
+    tools: [search_flights, book_flight]
+    fault_pool: [tool_flapping]
+    fault_targets: [book_flight]
+    max_steps: 8
+    end_state:
+      bookings.count: 1 # flapping retry must not double-book
+      bookings.flight_id: [FL-200]
+
+  - id: TP-stale-04
+    task: "Book the cheapest flight from SFO to JFK."
+    tools: [search_flights, book_flight]
+    fault_pool: [stale_data]
+    fault_targets: [search_flights]
+    max_steps: 8
+    end_state:
+      bookings.count: 1
+      bookings.flight_id: [FL-200] # stale search tempts the agent toward FL-100
+
+  - id: TP-drift-02
+    task: "Book the cheapest flight from SFO to JFK."
+    tools: [search_flights, book_flight]
+    fault_pool: [schema_drift]
+    fault_targets: [search_flights]
+    max_steps: 8
+    end_state:
+      bookings.count: 1
+      bookings.flight_id: [FL-200] # camelCased fields break naive parsing
+
+  - id: TP-empty-03
+    task: "What flights are available from SFO to SEA?"
+    tools: [search_flights, book_flight]
+    fault_pool: [empty_result]
+    fault_targets: [search_flights]
+    max_steps: 4
+    end_state:
+      bookings.count: 0 # a listing task must never book anything

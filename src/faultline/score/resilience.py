@@ -7,7 +7,7 @@ production killers) and renormalized over the classes actually present.
 from collections import defaultdict
 from statistics import median
 
-from faultline.faults.library import TIER0_FAULTS
+from faultline.faults.scheduler import resolve_fault
 
 DEFAULT_CLASS_WEIGHTS = {"F1": 0.10, "F2": 0.20, "F3": 0.35, "F4": 0.05, "F5": 0.30}
 
@@ -22,7 +22,8 @@ CLASS_LABELS = {
 
 def _run_fault_class(record: dict) -> str:
     fault_id = record["fault_schedule"]["entries"][0]["fault"]
-    return TIER0_FAULTS[fault_id].fault_class
+    fault = resolve_fault(fault_id)
+    return fault.fault_class if fault else "F3"
 
 
 def _class_scores(records: list[dict]) -> dict[str, list[float]]:

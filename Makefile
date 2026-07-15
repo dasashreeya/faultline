@@ -1,4 +1,4 @@
-.PHONY: setup test demo demo-eval demo-harden lint
+.PHONY: setup test demo demo-eval demo-trip demo-harden lint
 
 setup:
 	uv sync
@@ -17,6 +17,11 @@ demo:
 # Offline, no API key.
 demo-eval:
 	uv run faultline eval-plan --path examples/support_bot
+
+# The second example (booking domain, LangGraph): breadth signal, offline.
+demo-trip:
+	uv run faultline break --path examples/trip_planner
+	uv run faultline report --path examples/trip_planner
 
 # The full loop (needs `codex` CLI authed; flip judge.mode/agent in
 # examples/support_bot/faultline.yaml for the LLM judge + SDK agent).

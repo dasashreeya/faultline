@@ -1,0 +1,22 @@
+# Faultline config for the trip-planner example (second demo domain).
+# Sandbox default: scripted naive agent + detectors-only judge — fully offline.
+target:
+  agent: examples.trip_planner.naive_agent:run_task
+  tools: examples.trip_planner.tools:build_tools
+  reset: examples.trip_planner.tools:reset_backend
+  snapshot: examples.trip_planner.tools:snapshot
+  scenarios: scenarios.yaml
+  model: gpt-5.2-mini
+
+judge:
+  mode: detectors # llm (needs OPENAI_API_KEY)
+  model: gpt-5.6
+
+seeds: [1, 3]
+run_timeout_s: 30
+
+gate:
+  min_score: 85
+
+harden:
+  max_attempts: 3
