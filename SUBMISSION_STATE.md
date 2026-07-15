@@ -37,7 +37,7 @@ Last updated: 2026-07-15
 | Report | Rewritten. KPI tiles, survival curve with gate line, fault-class heat map, grade distribution, per-run evidence (fault + transcript + end state), patch ledger incl. rejected patches. Dark-mode aware, self-contained, autoescaped. |
 | Ledger integrity | Fixed: re-running an attempt used to append a duplicate set of runs (fresh uuid per run defeated `INSERT OR REPLACE`), which would have corrupted the survival curve during the harden loop. `clear_attempt` now makes an attempt a true re-run. |
 | Windows support | Fixed: `break`/`report` crashed on stock Windows consoles (cp1252 could not encode the rich emoji / report ⚡). stdout and all file I/O are now explicitly UTF-8. |
-| Tests | 52 tests, all offline, all green on the merged local `main` working tree. |
+| Tests | 57 tests, all offline, all green on the merged local `main` working tree. |
 
 ## Path B Verification (2026-07-15)
 
@@ -46,14 +46,14 @@ All live modes remained explicit opt-ins.
 
 | Item | Command/check | Observed result |
 | --- | --- | --- |
-| Offline suite | `uv run pytest -q` | 52 passed. |
+| Offline suite | `uv run pytest -q` | 57 passed. |
 | Offline demo | `faultline plan`, `break`, and `report` on `examples/support_bot` | Curated plan reproduced `20.6/100`; report rendered. GNU Make was unavailable on the Windows verification host, so the three commands behind `make demo` were run directly. |
 | GPT planner | `uv run faultline plan --path examples/support_bot --mode gpt`, with only `.env` providing the key | GPT-5.6 emitted a strict structured five-attack plan. The first pre-fix call exposed unsupported `temperature`; the corrected call succeeded. |
 | LLM judge | One-seed support-bot gauntlet with `cfg.judge_mode = "llm"`, followed by `render_report` | Score `37.1`; grades `D, A, B, D`; structured `llm:` reasoning was present in `report-live-judge.html`. Detector-certain grades remained authoritative. |
 | Required anti-cheat audit | `scan_patch(..., mode="required")` against an overfit scenario-ID/fixed-answer diff and a general freshness validator | GPT rejected the overfit diff and returned no violations for the general validator. |
 | Required audit without key | Disposable one-attempt `FAULTLINE_ANTICHEAT=required faultline harden` with `OPENAI_API_KEY` absent | Failed closed at the anti-cheat gate; the rejected attempt and reason were preserved in the ledger. |
 | Required audit with key | Disposable one-attempt `FAULTLINE_ANTICHEAT=required faultline harden` with the key present | GPT audit completed; the patch then failed the monotonic gate because the score stayed `28.8 -> 28.8`. The rejection remained in the ledger. |
-| Codex hardener | `make demo-harden` in a clean detached checkout with authenticated Codex CLI | Accepted Codex patches raised the score `20.6 → 76.5 → 100.0`. Generated target-agent commits remain outside the intentionally vulnerable baseline fixture. |
+| Codex hardener | `make demo-harden` in a fresh detached checkout with authenticated Codex CLI | Clean ledger recorded `(0, 20.6), (1, 20.6), (2, 41.2), (3, 64.7), (4, 100.0)`; accepted Codex patches raised the score `20.6 → 41.2 → 64.7 → 100.0`. Generated target-agent commits remain outside the intentionally vulnerable baseline fixture. |
 | Composite Action | Clean isolated consumer workspace: sync action project, `break`, `report`, `gate --min-score 20` | Passed at `28.8/100`; report existed. The action now runs from `${GITHUB_ACTION_PATH}/..`, fixing external-repo consumption. |
 | Hosted workflow | `.github/workflows/faultline-gate.yml` | Existing GitHub-hosted run `29390728477` passed on 2026-07-15 at SHA `f793e1a`; the new external-consumer fix still requires push/PR before hosted verification. |
 

@@ -41,13 +41,15 @@ the agent's final text alone.
 
 Current verified facts:
 
-- `uv run pytest -q`: 52 offline tests pass on merged local `main`.
+- `uv run pytest -q`: 57 offline tests pass on merged local `main`.
 - `make demo`: plan -> break -> report works without an API key.
 - The clean support-bot baseline is `20.6/100` with the curated attack plan.
 - Codex structured output and the gatekeeper can be exercised live.
-- Live Codex verification succeeded in a clean detached checkout:
-  `20.6 -> 76.5 -> 100.0`. Generated target-agent commits remain outside the
-  intentionally vulnerable baseline fixture.
+- Live Codex verification succeeded in a fresh detached checkout:
+  `20.6 -> 41.2 -> 64.7 -> 100.0`. The ledger preserved the original
+  `20.6` baseline while Codex performed local verification. Generated
+  target-agent commits remain outside the intentionally vulnerable baseline
+  fixture.
 
 The P0 hardener objective is verified, and the live planner, judge, anti-cheat,
 and Action work from Workstream B is now merged. The next objective is to

@@ -148,3 +148,16 @@ def test_commit_failure_rejects_patch_and_removes_trial_score(tmp_path, monkeypa
     assert reason == "commit gate: git commit failed"
     assert reverted == [True]
     assert ledger.scores() == [(0, 28.8)]
+
+
+def test_discard_attempt_keeps_rejection_audit_record(tmp_path):
+    ledger = Ledger(tmp_path / "ledger.sqlite3")
+    ledger.add_score(0, 28.8)
+    ledger.add_score(1, 28.8)
+    ledger.add_patch(1, "F3-stale-01", False, "improvement gate rejected", "noop")
+
+    ledger.discard_attempt(1)
+
+    assert ledger.scores() == [(0, 28.8)]
+    assert ledger.patches()[0]["accepted"] == 0
+    assert ledger.patches()[0]["reason"] == "improvement gate rejected"
