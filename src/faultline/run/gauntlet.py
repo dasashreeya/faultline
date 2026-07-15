@@ -26,10 +26,13 @@ async def run_one(
 ) -> dict:
     """One faulted run. Pass schedule={'entries': []} for a fault-free golden run."""
 
-    agent_fn = resolve(cfg.agent_entrypoint)
-    build_tools = resolve(cfg.tools_entrypoint)
-    reset_backend = resolve(cfg.reset_entrypoint)
-    snapshot = resolve(cfg.snapshot_entrypoint)
+    # The hardener edits target files between baseline and re-break in the
+    # same Python process. Reload each target entrypoint so the re-break uses
+    # the patched source rather than a cached baseline module.
+    agent_fn = resolve(cfg.agent_entrypoint, fresh=True)
+    build_tools = resolve(cfg.tools_entrypoint, fresh=True)
+    reset_backend = resolve(cfg.reset_entrypoint, fresh=True)
+    snapshot = resolve(cfg.snapshot_entrypoint, fresh=True)
 
     db_path = str(cfg.state_dir / f"backend-{scenario['id']}-s{seed}.sqlite3")
     reset_backend(db_path)

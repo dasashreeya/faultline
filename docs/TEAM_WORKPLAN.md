@@ -41,7 +41,7 @@ the agent's final text alone.
 
 Current verified facts:
 
-- `uv run pytest -q`: 44 offline tests pass on `p0-hardener-convergence`.
+- `uv run pytest -q`: 45 offline tests pass on merged local `main`.
 - `make demo`: plan -> break -> report works without an API key.
 - The clean support-bot baseline is `20.6/100` with the curated attack plan.
 - Codex structured output and the gatekeeper can be exercised live.
