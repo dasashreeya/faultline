@@ -75,7 +75,7 @@ def cfg(tmp_path):
 def test_reference_repair_improves_the_same_planned_gauntlet(cfg):
     plan = build_plan(cfg, mode="curated")
 
-    cfg.agent_entrypoint = "examples.support_bot.naive_agent:run_task"
+    cfg.agent_entrypoint = "tests.vulnerable_support_agent:run_task"
     baseline, _ = asyncio.run(run_gauntlet(cfg, attempt=0, plan=plan, persist=False))
 
     cfg.agent_entrypoint = "tests.test_hardening_reference:hardened_reference_agent"

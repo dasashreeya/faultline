@@ -31,7 +31,9 @@ def cfg(tmp_path):
         root,
         ignore=shutil.ignore_patterns(".faultline", "__pycache__"),
     )
-    return load_config(root)
+    config = load_config(root)
+    config.agent_entrypoint = "tests.vulnerable_support_agent:run_task"
+    return config
 
 
 def _scenario(cfg, sid="F2-flap-03"):

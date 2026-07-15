@@ -25,6 +25,7 @@ def cfg(tmp_path):
         ignore=shutil.ignore_patterns(".faultline", "__pycache__"),
     )
     c = load_config(root)
+    c.agent_entrypoint = "tests.vulnerable_support_agent:run_task"
     assert c.judge_mode == "detectors"  # sandbox default: fully offline
     return c
 
