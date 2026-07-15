@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./action
+      - uses: dasashreeya/faultline/action@<commit-sha>
         with:
           path: examples/support_bot
           min-score: "85"
@@ -23,4 +23,8 @@ jobs:
 
 The action installs Python and `uv`, runs `faultline break`, renders
 `faultline report`, then fails the job if `faultline gate` sees a score below
-the configured threshold.
+the configured threshold. Pin a release tag or full commit SHA in production.
+
+For development inside this repository, `uses: ./action` remains supported.
+The composite action runs Faultline from its own checkout, so it also works
+when consumed from another repository whose root is not a Python project.

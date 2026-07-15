@@ -49,7 +49,7 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 44 tests, all offline
+uv run pytest -q          # 51 tests, all offline
 make demo                 # plan → break → report
 ```
 
@@ -226,7 +226,8 @@ semantic faults are what actually kill agents in production.
 Every live path is **opt-in**. The default configuration is fully offline and
 deterministic, so judging costs nothing and cannot flake.
 
-To enable the live paths, set `OPENAI_API_KEY` and edit
+To enable the live paths, set `OPENAI_API_KEY` (a repository-root `.env` is
+loaded automatically without overriding an exported or CI value) and edit
 `examples/support_bot/faultline.yaml`:
 
 ```yaml
@@ -243,7 +244,7 @@ judge:
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: ./action
+- uses: dasashreeya/faultline/action@<commit-sha>
   with:
     path: examples/support_bot
     min-score: "85"
@@ -319,12 +320,14 @@ That's the gap Faultline owns — and the welding metal is Codex.
 
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
 score, report, gate, subprocess isolation, plus the Codex hardener and
-gatekeeper plumbing. 44 tests, all green, no API key required.
+gatekeeper plumbing. 51 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
-implemented and opt-in; they require credentials to exercise. Codex structured
-output and gate rejection have been exercised, but an accepted score-improving
-Codex patch is still an open P0 verification item. See
+implemented, opt-in, and credential-verified. GPT planning emitted a strict
+structured plan, LLM grading appeared in the HTML report, and the required
+anti-cheat audit rejected an overfit patch while allowing a general validator.
+Codex structured output and gate rejection have also been exercised, but an
+accepted score-improving Codex patch is still an open P0 verification item. See
 [`SUBMISSION_STATE.md`](SUBMISSION_STATE.md) for exactly what has and hasn't been
 run against live credentials — we'd rather tell you than have you find out.
 

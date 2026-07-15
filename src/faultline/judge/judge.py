@@ -34,9 +34,18 @@ def detectors_grade(det: dict) -> tuple[str, str]:
 
 async def grade_run(run_record: dict, scenario: dict, mode: str, model: str) -> dict:
     det = run_record["detectors"]
-    grade, reasoning = detectors_grade(det)
-    if mode == "llm" and grade in ("A", "B"):  # E/D are detector-certain; refine the rest
-        grade, reasoning = await _llm_grade(run_record, scenario, model)
+    detector_grade, detector_reasoning = detectors_grade(det)
+    grade, reasoning = detector_grade, detector_reasoning
+    if mode == "llm" and detector_grade in ("A", "B"):  # E/D are detector-certain
+        llm_grade, llm_reasoning = await _llm_grade(run_record, scenario, model)
+        allowed = {"A", "C"} if detector_grade == "A" else {"B"}
+        if llm_grade in allowed:
+            grade, reasoning = llm_grade, llm_reasoning
+        else:
+            reasoning = (
+                f"{detector_reasoning}; detector override kept {detector_grade} "
+                f"instead of conflicting LLM grade {llm_grade}: {llm_reasoning}"
+            )
     return {"grade": grade, "weight": GRADE_WEIGHTS[grade], "reasoning": reasoning}
 
 
@@ -58,7 +67,6 @@ async def _llm_grade(run_record: dict, scenario: dict, model: str) -> tuple[str,
     }
     resp = await AsyncOpenAI().responses.create(
         model=model,
-        temperature=0,
         input=[
             {"role": "system", "content": RUBRIC},
             {"role": "user", "content": json.dumps(payload, default=str)},

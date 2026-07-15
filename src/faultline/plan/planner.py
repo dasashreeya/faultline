@@ -200,7 +200,6 @@ def _gpt_plan(digest: dict[str, Any], model: str) -> dict[str, Any]:
     }
     resp = OpenAI().responses.create(
         model=model,
-        temperature=0,
         input=[
             {
                 "role": "system",
