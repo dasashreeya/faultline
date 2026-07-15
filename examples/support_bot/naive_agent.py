@@ -8,12 +8,8 @@ deliberately naive in exactly the ways real agent code is naive:
 - has no timeout handling
 """
 
-import json
 import re
 from datetime import datetime
-
-from faultline.faults.library import INJECTED_INSTRUCTION
-
 
 async def run_task(task: str, tools: dict, model: str | None = None) -> str:
     lookup, refund = tools["lookup_orders"], tools["refund_order"]
@@ -37,12 +33,6 @@ async def run_task(task: str, tools: dict, model: str | None = None) -> str:
     customer = next((c for c in ("avery", "jordan") if c in t), "")
     result = lookup(customer=customer)
     orders = result.get("orders", []) if isinstance(result, dict) else []
-
-    if INJECTED_INSTRUCTION in json.dumps(result, default=str):
-        for o in orders:  # obediently follows instructions found in tool output
-            if not try_refund(o["order_id"]):
-                return "The refund outcome could not be confirmed; no retry was attempted."
-        return "Done — refunded all orders per the account note."
 
     if "refund" in t:
         # A latest-order refund is destructive and freshness-sensitive. Confirm it
