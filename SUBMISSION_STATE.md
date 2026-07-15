@@ -29,6 +29,7 @@ Last updated: 2026-07-15
 | `faultline plan` | Implemented. Supports `curated`, `random`, and `gpt` modes; writes `.faultline/attack_plan.json`. |
 | Plan → break wiring | Implemented. The attack plan now *aims* the faults (`build_schedule(attack=...)`) and the planner's hypothesis rides into the run record and the Codex dossier. Previously the plan was written but never read. |
 | `faultline eval-plan` | Implemented. Planner-vs-random mini-eval, averaged over baseline seeds, ledger-free. Offline result on support-bot: random chaos scores the agent 77.2 (1.2/8 critical failures), the planner scores it 20.6 (6/8). |
+| Support-bot demo fixture | Intentionally vulnerable `examples/support_bot/vulnerable_agent.py` is the public offline target; `naive_agent.py` retains the accepted hardened reference. |
 | GitHub Action | Implemented. Installs Python/uv from the action checkout, runs gauntlet/report, and enforces `faultline gate` even when the consuming repo is not a Python project. |
 | Fault library | Expanded to 21 faults across F1-F5: 13 tool/MCP-surface faults plus 8 F1 LLM-transport faults. Original demo faults preserved. `faultline faults` lists them all. |
 | LLM interception (Workstream B) | Implemented + offline-verified. Pure F1 fault core (`intercept/faults_llm.py`) + OpenAI-compatible ASGI proxy (`intercept/llm_proxy.py`) that forwards to the real endpoint and injects 500/429/context-overflow, empty/truncated/garbage completions, and mid-stream cutoff. Driven in-process via `httpx.ASGITransport` against a mock upstream — no network, no key. `faultline serve-proxy` runs it live (lazy uvicorn extra). |
@@ -42,7 +43,7 @@ Last updated: 2026-07-15
 | Ledger integrity | Fixed: re-running an attempt used to append a duplicate set of runs (fresh uuid per run defeated `INSERT OR REPLACE`), which would have corrupted the survival curve during the harden loop. `clear_attempt` now makes an attempt a true re-run. |
 | Windows support | Fixed: `break`/`report` use UTF-8, and the Codex wrapper restores the elevated Windows workspace-write sandbox after `--ignore-user-config`. |
 | Codex hardening loop | Live verified and accepted. Three gatekeeper commits raised the curated support-bot score `20.6 → 41.2 → 64.7 → 100.0`; a later no-op was rejected at `100.0 → 100.0`. |
-| Tests | 118 tests, all offline, all green. |
+| Tests | 119 tests, all offline, all green. |
 
 ## P0 Acceptance Verification (2026-07-15)
 
@@ -67,7 +68,7 @@ the equivalent venv entrypoint was invoked directly:
 | Golden path | Passed before every accepted commit; final `faultline gate --min-score 85` passed at `100.0`. |
 | Rejected/no-op provenance | Real Codex attempt 4 rejected and reverted at `100.0 → 100.0`; retained in the patch ledger/report. |
 | Survival curve/report | `20.6 → 41.2 → 64.7 → 100.0 → 100.0`; rendered to `examples/support_bot/.faultline/report.html`. |
-| Offline regression suite | `118 passed` after integrating the remote Workstream A safeguards. |
+| Offline regression suite | `119 passed` after integrating the remote Workstream A safeguards and demo-fixture regression. |
 
 Two convergence defects were fixed during the run: Windows `--ignore-user-config`
 had silently reduced Codex to a read-only sandbox, and the gate was reusing the
@@ -82,7 +83,7 @@ All live modes remained explicit opt-ins.
 | Item | Command/check | Observed result |
 | --- | --- | --- |
 | Offline suite | `uv run pytest -q` | 51 passed at time of Path B; 110 passed after the Workstream B interception build (LLM proxy, MCP proxy, LangGraph adapter, trip-planner). |
-| Offline demo | `faultline plan`, `break`, and `report` on `examples/support_bot` | Curated plan reproduced `20.6/100`; report rendered. GNU Make was unavailable on the Windows verification host, so the three commands behind `make demo` were run directly. |
+| Offline demo | `make demo` on `examples/support_bot` | Curated plan reproduced `20.6/100`; report rendered from the public vulnerable fixture. |
 | GPT planner | `uv run faultline plan --path examples/support_bot --mode gpt`, with only `.env` providing the key | GPT-5.6 emitted a strict structured five-attack plan. The first pre-fix call exposed unsupported `temperature`; the corrected call succeeded. |
 | LLM judge | One-seed support-bot gauntlet with `cfg.judge_mode = "llm"`, followed by `render_report` | Score `37.1`; grades `D, A, B, D`; structured `llm:` reasoning was present in `report-live-judge.html`. Detector-certain grades remained authoritative. |
 | Required anti-cheat audit | `scan_patch(..., mode="required")` against an overfit scenario-ID/fixed-answer diff and a general freshness validator | GPT rejected the overfit diff and returned no violations for the general validator. |
@@ -90,15 +91,18 @@ All live modes remained explicit opt-ins.
 | Required audit with key | Disposable one-attempt `FAULTLINE_ANTICHEAT=required faultline harden` with the key present | GPT audit completed; the patch then failed the monotonic gate because the score stayed `28.8 -> 28.8`. The rejection remained in the ledger. |
 | Codex hardener | `make demo-harden` in a fresh detached checkout with authenticated Codex CLI | Clean ledger recorded `(0, 20.6), (1, 20.6), (2, 41.2), (3, 64.7), (4, 100.0)`; accepted Codex patches raised the score `20.6 → 41.2 → 64.7 → 100.0`. Generated target-agent commits remain outside the intentionally vulnerable baseline fixture. |
 | Composite Action | Clean isolated consumer workspace: sync action project, `break`, `report`, `gate --min-score 20` | Passed at `28.8/100`; report existed. The action now runs from `${GITHUB_ACTION_PATH}/..`, fixing external-repo consumption. |
-| Hosted workflow | `.github/workflows/faultline-gate.yml` | Existing GitHub-hosted run `29390728477` passed on 2026-07-15 at SHA `f793e1a`; a fresh hosted run is expected after the direct `main` push. |
+| Hosted workflow | `.github/workflows/faultline-gate.yml` | Manual dispatch runs `29447160856` (`main`, SHA `e087de1`) and `29451150274` (`integration-demo-live-verification`, SHA `d78498f`) passed on 2026-07-15. GitHub emitted only a Node.js 20 deprecation annotation from upstream setup actions. |
+| Live LLM proxy smoke | `uv run --extra proxy faultline serve-proxy --fault llm_rate_limit` plus a real local HTTP request | Uvicorn served the proxy and returned the expected `429` response without contacting an upstream. |
+| Live MCP stdio smoke | `serve_stdio` with a temporary child JSON-RPC server and a `stale_data` schedule | The newline-delimited proxy path changed a two-order response into the expected stale single-order response. |
+| LangGraph local live smoke | `uv run --with langgraph --with langchain-openai` against a local OpenAI-compatible mock | `examples/trip_planner/agent.py` completed a real two-call LangGraph ReAct run through the adapter; no external API was contacted. |
 
 ## Still Open
 
 | Item | State |
 | --- | --- |
-| Hosted verification of the latest action changes | Requires observing a fresh GitHub-hosted run after this direct push. |
-| Live-endpoint proxy verification | The LLM and MCP proxies are implemented and offline-verified (in-process transports), but have not yet been exercised against a real OpenAI endpoint / a real third-party MCP server with a live agent. Offline behavior is fully test-covered. |
-| Live LangGraph agent run | `examples/trip_planner/agent.py` is implemented but not yet run against `OPENAI_API_KEY` + the langgraph/langchain-openai extras; the scripted `naive_agent` (offline default) is fully verified. |
+| Hosted verification of the latest action changes | Complete. Manual dispatch run `29451150274` passed on the pushed review branch at SHA `d78498f`. |
+| Live-endpoint proxy verification | Local live Uvicorn and MCP stdio paths passed. Validation against a real OpenAI endpoint and a real third-party MCP server remains pending; `OPENAI_API_KEY` is absent and no third-party MCP server command is configured. |
+| Live LangGraph agent run | The real LangGraph agent completed against a local OpenAI-compatible mock with ephemeral extras. A real OpenAI run remains pending until `OPENAI_API_KEY` is supplied locally; the scripted `naive_agent` path is fully verified offline. |
 
 ## Demo Commands
 

@@ -1,10 +1,11 @@
 name: faultline-gate-smoke
 
 # Dogfoods action/action.yml against the bundled support-bot example. This is
-# a smoke test, not a merge gate: the naive support-bot agent is intentionally
-# fragile (baseline Resilience Score ~29/100 -- see FAULTLINE_BLUEPRINT.md
-# section 6), so the threshold below only proves the action runs the gauntlet
-# and enforces a floor, not that the example agent is production-ready.
+# a smoke test, not a merge gate: the public support-bot demo target is
+# intentionally fragile (baseline Resilience Score 20.6/100 -- see
+# FAULTLINE_BLUEPRINT.md section 6), so the threshold below only proves the
+# action runs the gauntlet and enforces a floor, not that the example agent is
+# production-ready.
 on:
   workflow_dispatch:
   pull_request:
