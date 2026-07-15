@@ -41,33 +41,6 @@ def _schema_path(cfg: Config) -> Path:
 
 def run_codex(cfg: Config, dossier: dict) -> dict | None:
     """One hardening attempt. Returns the parsed PatchResult, or None on failure."""
-    out_file = cfg.state_dir / "codex_last_message.json"
-    out_file.unlink(missing_ok=True)
-    cmd = [
-        "codex",
-        "exec",
-        "-C",
-        str(cfg.root),
-        "--ignore-user-config",
-    ]
-    if sys.platform == "win32":
-        # The Windows workspace-write sandbox is selected by this platform
-        # setting. --ignore-user-config intentionally drops personal model
-        # pins, but without restoring this one setting Codex silently falls
-        # back to read-only and returns a structured no-op patch.
-        cmd.extend(["-c", 'windows.sandbox="elevated"'])
-    cmd.extend(
-        [
-            "--sandbox",
-            "workspace-write",
-            "--skip-git-repo-check",
-            "--output-schema",
-            str(_schema_path(cfg)),
-            "-o",
-            str(out_file),
-            render_prompt(dossier),
-        ]
-    )
     ledger_path = cfg.state_dir / "ledger.sqlite3"
     with tempfile.TemporaryDirectory(prefix="faultline-codex-ledger-") as temp_dir:
         backup = Path(temp_dir) / "ledger.sqlite3"
@@ -75,31 +48,55 @@ def run_codex(cfg: Config, dossier: dict) -> dict | None:
         if had_ledger:
             shutil.copy2(ledger_path, backup)
         try:
-            proc = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=CODEX_TIMEOUT_S,
-            )
-        except subprocess.TimeoutExpired:
-            return None
+            try:
+                out_file = cfg.state_dir / "codex_last_message.json"
+                out_file.unlink(missing_ok=True)
+                cmd = [
+                    "codex",
+                    "exec",
+                    "-C",
+                    str(cfg.root),
+                    "--ignore-user-config",
+                ]
+                if sys.platform == "win32":
+                    # --ignore-user-config intentionally drops the Windows
+                    # workspace-write platform setting along with personal pins.
+                    cmd.extend(["-c", 'windows.sandbox="elevated"'])
+                cmd.extend(
+                    [
+                        "--sandbox",
+                        "workspace-write",
+                        "--skip-git-repo-check",
+                        "--output-schema",
+                        str(_schema_path(cfg)),
+                        "-o",
+                        str(out_file),
+                        render_prompt(dossier),
+                    ]
+                )
+                proc = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=CODEX_TIMEOUT_S,
+                )
+            except subprocess.TimeoutExpired:
+                return None
+            if not out_file.exists():
+                (cfg.state_dir / "codex_last_error.log").write_text(
+                    proc.stdout + proc.stderr, encoding="utf-8"
+                )
+                return None
+            try:
+                return json.loads(out_file.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                return None
         finally:
-            # Codex is required to execute the failing scenario, but those
-            # verification commands must not rewrite the parent hardening
-            # attempt's runs or score. Restore the ledger after the subprocess
-            # exits; the structured response and source diff remain intact.
-            for suffix in ("", "-wal", "-shm", "-journal"):
-                Path(str(ledger_path) + suffix).unlink(missing_ok=True)
+            # Codex verification may run Faultline commands. Overwrite rather
+            # than unlink the SQLite file so restoration also works on Windows.
             if had_ledger:
                 shutil.copy2(backup, ledger_path)
-    if not out_file.exists():
-        (cfg.state_dir / "codex_last_error.log").write_text(
-            proc.stdout + proc.stderr, encoding="utf-8"
-        )
-        return None
-    try:
-        return json.loads(out_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
+            else:
+                ledger_path.unlink(missing_ok=True)

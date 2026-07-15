@@ -1,6 +1,7 @@
 """The hardener must compare patches with the source currently on disk."""
 
 import asyncio
+import json
 from types import SimpleNamespace
 
 from faultline.cli import _fresh_harden_baseline
@@ -75,3 +76,32 @@ def test_run_codex_restores_windows_workspace_write_and_decodes_utf8(tmp_path, m
     assert 'windows.sandbox="elevated"' in captured["cmd"]
     assert captured["kwargs"]["encoding"] == "utf-8"
     assert captured["kwargs"]["errors"] == "replace"
+
+
+def test_codex_verification_cannot_overwrite_faultline_ledger(tmp_path, monkeypatch):
+    state_dir = tmp_path / ".faultline"
+    state_dir.mkdir()
+    ledger_path = state_dir / "ledger.sqlite3"
+    Ledger(ledger_path).add_score(0, 20.6)
+    cfg = SimpleNamespace(root=tmp_path, state_dir=state_dir)
+
+    def fake_codex(cmd, **kwargs):
+        Ledger(ledger_path).add_score(0, 100.0)
+        output = {
+            "summary": "validate responses",
+            "strategies": ["response_validator"],
+            "files_changed": ["agent.py"],
+            "rationale": "handles malformed responses generally",
+            "risks": "fallback may surface an explicit failure",
+        }
+        output_path = cmd[cmd.index("-o") + 1]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            json.dump(output, handle)
+        return SimpleNamespace(stdout="", stderr="", returncode=0)
+
+    monkeypatch.setattr(codex_loop.subprocess, "run", fake_codex)
+
+    result = codex_loop.run_codex(cfg, {"scenario_id": "F3-stale-01"})
+
+    assert result["summary"] == "validate responses"
+    assert Ledger(ledger_path).scores() == [(0, 20.6)]

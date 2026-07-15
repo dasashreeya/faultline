@@ -41,15 +41,19 @@ the agent's final text alone.
 
 Current verified facts:
 
-- `uv run pytest -q`: 44 offline tests pass on `p0-hardener-convergence`.
+- `uv run pytest -q`: 57 offline tests pass on merged local `main`.
 - `make demo`: plan -> break -> report works without an API key.
 - The clean support-bot baseline is `20.6/100` with the curated attack plan.
 - Codex structured output and the gatekeeper can be exercised live.
-- No live Codex patch has yet produced an accepted score increase; generated
-  patches that leave the score unchanged are rejected.
+- Live Codex verification succeeded in a fresh detached checkout:
+  `20.6 -> 41.2 -> 64.7 -> 100.0`. The ledger preserved the original
+  `20.6` baseline while Codex performed local verification. Generated
+  target-agent commits remain outside the intentionally vulnerable baseline
+  fixture.
 
-The immediate P0 objective is therefore: produce and verify one general
-Codex-generated repair that raises the score while preserving the happy path.
+The P0 hardener objective is verified, and the live planner, judge, anti-cheat,
+and Action work from Workstream B is now merged. The next objective is to
+preserve this proof while deciding which P2 blueprint subsystem to build next.
 
 ## Workstream A: P0 Hardening Loop
 
@@ -212,18 +216,19 @@ The root schema and the packaged schema in
 
 ## Branch And Handoff Rules
 
-Start from the pushed P0 branch:
+Start new work from the latest shared main branch:
 
 ```bash
 git fetch origin
-git switch --track origin/p0-harden-loop
+git switch main
+git pull --ff-only origin main
 ```
 
 Then create separate branches:
 
 ```bash
 # You
-git switch -c p0-hardener-convergence
+git switch -c workstream-a/<short-name>
 
 # Teammate
 git switch -c teammate/live-integrations
@@ -258,15 +263,17 @@ Integration happens only after both workstreams have completed their current
 acceptance checks.
 
 1. Both branches fetch the latest `origin/main` and inspect conflicts.
-2. The P0 owner opens the hardener branch for review first.
-3. Create the integration branch from the reviewed P0 branch:
+2. Each owner opens their workstream branch for review with the handoff
+   template above.
+3. Create the integration branch from the latest approved `main`:
 
    ```bash
-   git switch p0-harden-loop
-   git switch -c integrate/p0-live-verification
+   git switch main
+   git pull --ff-only origin main
+   git switch -c integrate/<short-name>
    ```
 
-4. Merge the teammate's live-integration branch into the integration branch.
+4. Merge each approved workstream branch into the integration branch.
 5. Resolve conflicts by preserving frozen schemas and the offline default.
 6. Run the complete verification matrix:
 

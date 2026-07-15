@@ -42,7 +42,7 @@ Last updated: 2026-07-15
 | Ledger integrity | Fixed: re-running an attempt used to append a duplicate set of runs (fresh uuid per run defeated `INSERT OR REPLACE`), which would have corrupted the survival curve during the harden loop. `clear_attempt` now makes an attempt a true re-run. |
 | Windows support | Fixed: `break`/`report` use UTF-8, and the Codex wrapper restores the elevated Windows workspace-write sandbox after `--ignore-user-config`. |
 | Codex hardening loop | Live verified and accepted. Three gatekeeper commits raised the curated support-bot score `20.6 → 41.2 → 64.7 → 100.0`; a later no-op was rejected at `100.0 → 100.0`. |
-| Tests | 112 tests, all offline, all green. |
+| Tests | 118 tests, all offline, all green. |
 
 ## P0 Acceptance Verification (2026-07-15)
 
@@ -67,7 +67,7 @@ the equivalent venv entrypoint was invoked directly:
 | Golden path | Passed before every accepted commit; final `faultline gate --min-score 85` passed at `100.0`. |
 | Rejected/no-op provenance | Real Codex attempt 4 rejected and reverted at `100.0 → 100.0`; retained in the patch ledger/report. |
 | Survival curve/report | `20.6 → 41.2 → 64.7 → 100.0 → 100.0`; rendered to `examples/support_bot/.faultline/report.html`. |
-| Offline regression suite | `112 passed`. |
+| Offline regression suite | `118 passed` after integrating the remote Workstream A safeguards. |
 
 Two convergence defects were fixed during the run: Windows `--ignore-user-config`
 had silently reduced Codex to a read-only sandbox, and the gate was reusing the
@@ -88,13 +88,15 @@ All live modes remained explicit opt-ins.
 | Required anti-cheat audit | `scan_patch(..., mode="required")` against an overfit scenario-ID/fixed-answer diff and a general freshness validator | GPT rejected the overfit diff and returned no violations for the general validator. |
 | Required audit without key | Disposable one-attempt `FAULTLINE_ANTICHEAT=required faultline harden` with `OPENAI_API_KEY` absent | Failed closed at the anti-cheat gate; the rejected attempt and reason were preserved in the ledger. |
 | Required audit with key | Disposable one-attempt `FAULTLINE_ANTICHEAT=required faultline harden` with the key present | GPT audit completed; the patch then failed the monotonic gate because the score stayed `28.8 -> 28.8`. The rejection remained in the ledger. |
+| Codex hardener | `make demo-harden` in a fresh detached checkout with authenticated Codex CLI | Clean ledger recorded `(0, 20.6), (1, 20.6), (2, 41.2), (3, 64.7), (4, 100.0)`; accepted Codex patches raised the score `20.6 → 41.2 → 64.7 → 100.0`. Generated target-agent commits remain outside the intentionally vulnerable baseline fixture. |
 | Composite Action | Clean isolated consumer workspace: sync action project, `break`, `report`, `gate --min-score 20` | Passed at `28.8/100`; report existed. The action now runs from `${GITHUB_ACTION_PATH}/..`, fixing external-repo consumption. |
-| Hosted workflow | `.github/workflows/faultline-gate.yml` | Existing GitHub-hosted run `29390728477` passed on 2026-07-15 at SHA `f793e1a`; the new external-consumer fix still requires push/PR before hosted verification. |
+| Hosted workflow | `.github/workflows/faultline-gate.yml` | Existing GitHub-hosted run `29390728477` passed on 2026-07-15 at SHA `f793e1a`; a fresh hosted run is expected after the direct `main` push. |
 
 ## Still Open
 
 | Item | State |
 | --- | --- |
+| Hosted verification of the latest action changes | Requires observing a fresh GitHub-hosted run after this direct push. |
 | Live-endpoint proxy verification | The LLM and MCP proxies are implemented and offline-verified (in-process transports), but have not yet been exercised against a real OpenAI endpoint / a real third-party MCP server with a live agent. Offline behavior is fully test-covered. |
 | Live LangGraph agent run | `examples/trip_planner/agent.py` is implemented but not yet run against `OPENAI_API_KEY` + the langgraph/langchain-openai extras; the scripted `naive_agent` (offline default) is fully verified. |
 

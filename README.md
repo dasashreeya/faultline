@@ -49,7 +49,7 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 112 tests, all offline
+uv run pytest -q          # 118 tests, all offline
 make demo                 # plan → break → report
 ```
 
@@ -353,7 +353,7 @@ That's the gap Faultline owns — and the welding metal is Codex.
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
 score, report, gate, subprocess isolation, all three injection surfaces (tool,
 LLM proxy, MCP proxy), both example agents, plus the Codex hardener and
-gatekeeper plumbing. 112 tests, all green, no API key required.
+gatekeeper plumbing. 118 tests, all green, no API key required.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
 implemented, opt-in, and credential-verified. GPT planning emitted a strict
