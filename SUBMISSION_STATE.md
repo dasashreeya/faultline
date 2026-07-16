@@ -33,7 +33,7 @@ Last updated: 2026-07-15
 | GitHub Action | Implemented. Installs Python/uv from the action checkout, runs gauntlet/report, and enforces `faultline gate` even when the consuming repo is not a Python project. |
 | Fault library | Expanded to 21 faults across F1-F5: 13 tool/MCP-surface faults plus 8 F1 LLM-transport faults. Original demo faults preserved. `faultline faults` lists them all. |
 | LLM interception (Workstream B) | Implemented + live-verified. Pure F1 fault core (`intercept/faults_llm.py`) + OpenAI-compatible ASGI proxy (`intercept/llm_proxy.py`) forwards to the real endpoint and injects 500/429/context-overflow, empty/truncated/garbage completions, and mid-stream cutoff. Offline ASGI coverage is complete; a real OpenAI request through `faultline serve-proxy --fault llm_empty_completion` returned an injected empty completion. |
-| MCP interception (Workstream B) | Implemented + offline-verified. JSON-RPC man-in-the-middle (`intercept/mcp_proxy.py`) corrupts `tools/call` results using the shared F2-F5 fault library (stale data, empty result, schema drift, injected instruction), and gets transport semantics right (short-circuit vs land-then-drop). Verified against an in-memory server. |
+| MCP interception (Workstream B) | Implemented + live-verified. JSON-RPC man-in-the-middle (`intercept/mcp_proxy.py`) corrupts `tools/call` results using the shared F2-F5 fault library (stale data, empty result, schema drift, injected instruction), and gets transport semantics right (short-circuit vs land-then-drop). Offline tests and a real `@modelcontextprotocol/server-everything` stdio session both passed. |
 | LangGraph adapter + 2nd example (Workstream B) | Implemented + live-verified. `intercept/adapters/langgraph.py` reuses the shared injection core and converts wrapped tools to LangChain StructuredTools (signature preserved). `examples/trip_planner` is a booking domain (F2 flapping double-book, F4 schema drift) with a scripted offline agent and a live LangGraph agent; baseline RS `35.0/100`. The live GPT-5.6 Chat Completions path explicitly sets `reasoning_effort="none"` so tool calls are accepted. |
 | End-state oracle | Generalized. Legacy `refunded_order`/`refund_count` keys unchanged; added a generic dotted-path form (`<collection>.count`, `<collection>.<field>`) so a second example asserts its own effects without the judge knowing the domain. |
 | Anti-cheat | Marker scan remains deterministic default; optional GPT-5.6 audit via `FAULTLINE_ANTICHEAT=gpt` or `required`. |
@@ -97,13 +97,14 @@ All live modes remained explicit opt-ins.
 | LangGraph local live smoke | `uv run --with langgraph --with langchain-openai` against a local OpenAI-compatible mock | `examples/trip_planner/agent.py` completed a real two-call LangGraph ReAct run through the adapter; no external API was contacted. |
 | Real OpenAI LangGraph smoke | `uv run --with langgraph --with langchain-openai` with repository `.env` loaded | `examples/trip_planner/agent.py` completed against OpenAI and returned the cheapest flight (`FL-200`, `$310`) after the GPT-5.6 tool-calling compatibility fix. |
 | Real OpenAI proxy smoke | `faultline serve-proxy --fault llm_empty_completion` plus LangChain `ChatOpenAI(base_url=...)` | OpenAI returned `200` upstream; Faultline injected the empty completion and the client received content length `0`. |
+| Real MCP proxy smoke | `serve_stdio` with `npx --yes @modelcontextprotocol/server-everything stdio` and an `injected_instruction` schedule | MCP initialize and `echo` tool call succeeded; Faultline injected the adversarial instruction into the real server's tool result. |
 
 ## Still Open
 
 | Item | State |
 | --- | --- |
 | Hosted verification of the latest action changes | Complete. Manual dispatch run `29451150274` passed on the pushed review branch at SHA `d78498f`. |
-| Live-endpoint proxy verification | Real OpenAI passthrough plus injected `llm_empty_completion` passed. A real third-party MCP server remains pending because no server command is configured; the local MCP stdio path is verified. |
+| Live-endpoint proxy verification | Complete. Real OpenAI passthrough plus injected `llm_empty_completion` passed, and a real third-party MCP stdio server passed with injected tool-result corruption. |
 | Live LangGraph agent run | Complete. `examples/trip_planner/agent.py` ran against OpenAI with the LangGraph/LangChain OpenAI extras and completed a real tool call. The scripted `naive_agent` path remains fully verified offline. |
 
 ## Demo Commands
