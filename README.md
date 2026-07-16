@@ -287,7 +287,7 @@ judge:
 ## CI gate
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v7
 - uses: dasashreeya/faultline/action@<commit-sha>
   with:
     path: examples/support_bot
