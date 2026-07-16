@@ -34,7 +34,7 @@ refund.
 ## To run the live LangGraph agent
 
 ```bash
-uv pip install langgraph langchain-openai
+uv sync --extra langgraph
 export OPENAI_API_KEY=...
 # then set target.agent to examples.trip_planner.agent:run_task in faultline.yaml
 ```

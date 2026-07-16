@@ -8,11 +8,25 @@ name: faultline-gate-smoke
 # production-ready.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "action/**"
+      - "src/faultline/**"
+      - "examples/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/faultline-gate.yml"
   pull_request:
     paths:
       - "action/**"
       - "src/faultline/**"
-      - "examples/support_bot/**"
+      - "examples/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/faultline-gate.yml"
 
 jobs:
   gate:

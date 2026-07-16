@@ -32,7 +32,7 @@ acceptance check has been run and recorded in `SUBMISSION_STATE.md`.
 The default target is the deterministic scripted support bot:
 
 ```text
-examples.support_bot.naive_agent:run_task
+examples.support_bot.vulnerable_agent:run_task
 ```
 
 It is intentionally vulnerable. Faultline verifies behavior against the
@@ -41,7 +41,7 @@ the agent's final text alone.
 
 Current verified facts:
 
-- `uv run pytest -q`: 57 offline tests pass on merged local `main`.
+- `uv run pytest -q`: 123 offline tests pass on merged local `main`.
 - `make demo`: plan -> break -> report works without an API key.
 - The clean support-bot baseline is `20.6/100` with the curated attack plan.
 - Codex structured output and the gatekeeper can be exercised live.
@@ -51,9 +51,10 @@ Current verified facts:
   target-agent commits remain outside the intentionally vulnerable baseline
   fixture.
 
-The P0 hardener objective is verified, and the live planner, judge, anti-cheat,
-and Action work from Workstream B is now merged. The next objective is to
-preserve this proof while deciding which P2 blueprint subsystem to build next.
+The P0 hardener objective is verified. The live planner, judge, anti-cheat,
+Action, LLM/MCP interception surfaces, LangGraph example, and raw-MCP example
+are integrated. The remaining submission work is external presentation and
+optional validation against a configured third-party MCP server.
 
 ## Workstream A: P0 Hardening Loop
 
@@ -335,8 +336,8 @@ documented without weakening offline reproducibility.
 
 ### P2
 
-The LLM/MCP interception surfaces and additional example agents are implemented
-only after P0 and P1 are stable.
+Complete: the LLM/MCP interception surfaces and additional example agents were
+implemented after P0 and P1 stabilized and are covered by the offline suite.
 
 ### Stretch
 

@@ -34,6 +34,7 @@ Last updated: 2026-07-15
 | Fault library | Expanded to 21 faults across F1-F5: 13 tool/MCP-surface faults plus 8 F1 LLM-transport faults. Original demo faults preserved. `faultline faults` lists them all. |
 | LLM interception (Workstream B) | Implemented + live-verified. Pure F1 fault core (`intercept/faults_llm.py`) + OpenAI-compatible ASGI proxy (`intercept/llm_proxy.py`) forwards to the real endpoint and injects 500/429/context-overflow, empty/truncated/garbage completions, and mid-stream cutoff. Offline ASGI coverage is complete; a real OpenAI request through `faultline serve-proxy --fault llm_empty_completion` returned an injected empty completion. |
 | MCP interception (Workstream B) | Implemented + offline-verified. JSON-RPC man-in-the-middle (`intercept/mcp_proxy.py`) corrupts `tools/call` results using the shared F2-F5 fault library (stale data, empty result, schema drift, injected instruction), and gets transport semantics right (short-circuit vs land-then-drop). Verified against an in-memory server. |
+| Raw-MCP research example | Implemented + offline-verified. `examples/mcp_research` speaks MCP-shaped JSON-RPC through the interceptor to a stateful SQLite server; clean, `stale_data`, and `empty_result` behavior are pinned by tests and `make demo-mcp`. |
 | LangGraph adapter + 2nd example (Workstream B) | Implemented + live-verified. `intercept/adapters/langgraph.py` reuses the shared injection core and converts wrapped tools to LangChain StructuredTools (signature preserved). `examples/trip_planner` is a booking domain (F2 flapping double-book, F4 schema drift) with a scripted offline agent and a live LangGraph agent; baseline RS `35.0/100`. The live GPT-5.6 Chat Completions path explicitly sets `reasoning_effort="none"` so tool calls are accepted. |
 | End-state oracle | Generalized. Legacy `refunded_order`/`refund_count` keys unchanged; added a generic dotted-path form (`<collection>.count`, `<collection>.<field>`) so a second example asserts its own effects without the judge knowing the domain. |
 | Anti-cheat | Marker scan remains deterministic default; optional GPT-5.6 audit via `FAULTLINE_ANTICHEAT=gpt` or `required`. |
@@ -43,7 +44,7 @@ Last updated: 2026-07-15
 | Ledger integrity | Fixed: re-running an attempt used to append a duplicate set of runs (fresh uuid per run defeated `INSERT OR REPLACE`), which would have corrupted the survival curve during the harden loop. `clear_attempt` now makes an attempt a true re-run. |
 | Windows support | Fixed: `break`/`report` use UTF-8, and the Codex wrapper restores the elevated Windows workspace-write sandbox after `--ignore-user-config`. |
 | Codex hardening loop | Live verified and accepted. Three gatekeeper commits raised the curated support-bot score `20.6 → 41.2 → 64.7 → 100.0`; a later no-op was rejected at `100.0 → 100.0`. |
-| Tests | 120 tests, all offline, all green. |
+| Tests | 123 tests, all offline, all green. |
 
 ## P0 Acceptance Verification (2026-07-15)
 
@@ -68,7 +69,7 @@ the equivalent venv entrypoint was invoked directly:
 | Golden path | Passed before every accepted commit; final `faultline gate --min-score 85` passed at `100.0`. |
 | Rejected/no-op provenance | Real Codex attempt 4 rejected and reverted at `100.0 → 100.0`; retained in the patch ledger/report. |
 | Survival curve/report | `20.6 → 41.2 → 64.7 → 100.0 → 100.0`; rendered to `examples/support_bot/.faultline/report.html`. |
-| Offline regression suite | `120 passed` after integrating the remote Workstream A safeguards, demo-fixture regression, and LangGraph tool-calling compatibility regression. |
+| Offline regression suite | `123 passed` after integrating the Workstream A safeguards, demo-fixture regression, LangGraph tool-calling compatibility regression, and raw-MCP example coverage. |
 
 Two convergence defects were fixed during the run: Windows `--ignore-user-config`
 had silently reduced Codex to a read-only sandbox, and the gate was reusing the
@@ -102,9 +103,8 @@ All live modes remained explicit opt-ins.
 
 | Item | State |
 | --- | --- |
-| Hosted verification of the latest action changes | Complete. Manual dispatch run `29451150274` passed on the pushed review branch at SHA `d78498f`. |
-| Live-endpoint proxy verification | Real OpenAI passthrough plus injected `llm_empty_completion` passed. A real third-party MCP server remains pending because no server command is configured; the local MCP stdio path is verified. |
-| Live LangGraph agent run | Complete. `examples/trip_planner/agent.py` ran against OpenAI with the LangGraph/LangChain OpenAI extras and completed a real tool call. The scripted `naive_agent` path remains fully verified offline. |
+| Third-party MCP endpoint | A real server remains pending because no server command or credentials are configured. The raw JSON-RPC example, in-memory proxy, and local MCP stdio subprocess paths are verified. |
+| Submission presentation | Record and upload the Devpost demo video, then complete the external Devpost form. |
 
 ## Demo Commands
 
@@ -114,6 +114,7 @@ Offline path:
 uv sync
 uv run pytest -q
 make demo
+make demo-mcp
 ```
 
 Planner paths:
