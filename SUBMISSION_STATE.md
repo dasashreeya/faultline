@@ -91,7 +91,7 @@ All live modes remained explicit opt-ins.
 | Required audit with key | Disposable one-attempt `FAULTLINE_ANTICHEAT=required faultline harden` with the key present | GPT audit completed; the patch then failed the monotonic gate because the score stayed `28.8 -> 28.8`. The rejection remained in the ledger. |
 | Codex hardener | `make demo-harden` in a fresh detached checkout with authenticated Codex CLI | Clean ledger recorded `(0, 20.6), (1, 20.6), (2, 41.2), (3, 64.7), (4, 100.0)`; accepted Codex patches raised the score `20.6 → 41.2 → 64.7 → 100.0`. Generated target-agent commits remain outside the intentionally vulnerable baseline fixture. |
 | Composite Action | Clean isolated consumer workspace: sync action project, `break`, `report`, `gate --min-score 20` | Passed at `28.8/100`; report existed. The action now runs from `${GITHUB_ACTION_PATH}/..`, fixing external-repo consumption. |
-| Hosted workflow | `.github/workflows/faultline-gate.yml` | Manual dispatch runs `29447160856` (`main`, SHA `e087de1`) and `29451150274` (`integration-demo-live-verification`, SHA `d78498f`) passed on 2026-07-15. GitHub emitted only a Node.js 20 deprecation annotation from upstream setup actions. |
+| Hosted workflow | `.github/workflows/faultline-gate.yml` | Manual dispatch run `29464520122` passed on the final `integration-demo-live-verification` head `7132bc4` on 2026-07-15. Earlier `main` run `29447160856` also passed. GitHub emitted only a Node.js 20 deprecation annotation from upstream setup actions. |
 | Live LLM proxy smoke | `uv run --extra proxy faultline serve-proxy --fault llm_rate_limit` plus a real local HTTP request | Uvicorn served the proxy and returned the expected `429` response without contacting an upstream. |
 | Live MCP stdio smoke | `serve_stdio` with a temporary child JSON-RPC server and a `stale_data` schedule | The newline-delimited proxy path changed a two-order response into the expected stale single-order response. |
 | LangGraph local live smoke | `uv run --with langgraph --with langchain-openai` against a local OpenAI-compatible mock | `examples/trip_planner/agent.py` completed a real two-call LangGraph ReAct run through the adapter; no external API was contacted. |
@@ -103,7 +103,7 @@ All live modes remained explicit opt-ins.
 
 | Item | State |
 | --- | --- |
-| Hosted verification of the latest action changes | Complete. Manual dispatch run `29451150274` passed on the pushed review branch at SHA `d78498f`. |
+| Hosted verification of the latest action changes | Complete. Manual dispatch run `29464520122` passed on the final pushed review branch at SHA `7132bc4`. |
 | Live-endpoint proxy verification | Complete. Real OpenAI passthrough plus injected `llm_empty_completion` passed, and a real third-party MCP stdio server passed with injected tool-result corruption. |
 | Live LangGraph agent run | Complete. `examples/trip_planner/agent.py` ran against OpenAI with the LangGraph/LangChain OpenAI extras and completed a real tool call. The scripted `naive_agent` path remains fully verified offline. |
 
