@@ -1,10 +1,21 @@
 [project]
-name = "faultline"
-version = "0.1.0"
+name = "faultline-ai"
+version = "0.2.0"
 description = "Chaos engineering that fixes what it breaks: inject → grade → harden (Codex) → verify → re-inject."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+]
 dependencies = [
     "typer>=0.12",
     "rich>=13.7",
@@ -15,6 +26,11 @@ dependencies = [
     "openai>=1.40",
     "python-dotenv>=1.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/dasashreeya/faultline"
+Repository = "https://github.com/dasashreeya/faultline"
+Issues = "https://github.com/dasashreeya/faultline/issues"
 
 [project.optional-dependencies]
 # Only needed to *serve* the live LLM proxy; the fault core and its tests run

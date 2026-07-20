@@ -77,7 +77,13 @@ To create a distributable artifact for a teammate or release workflow:
 
 ```bash
 uv build
-uv tool install dist/faultline-0.1.0-py3-none-any.whl
+uv tool install dist/faultline_ai-0.2.0-py3-none-any.whl
+```
+
+After publication, the public install command will be:
+
+```bash
+uv tool install faultline-ai
 ```
 
 Then run it from an agent project containing importable adapter functions:
