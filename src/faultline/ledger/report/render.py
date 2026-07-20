@@ -104,10 +104,12 @@ PAGE = Template(
  details>summary::before{content:"▸ ";}
  details[open]>summary::before{content:"▾ ";}
  .section-fold{margin:2.5rem 0 0;border-top:1px solid var(--line)}
- .section-fold>summary{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;
-   padding:.85rem 0;color:var(--fg);font-size:1.2rem;font-weight:650}
+ .section-fold>summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+   align-items:baseline;gap:.55rem;padding:.85rem 0;color:var(--fg);
+   font-size:1.2rem;font-weight:650}
  .section-fold>summary::before{color:var(--accent);font-size:1rem}
  .section-fold>summary small{font-size:.85em}
+ .section-fold>summary:hover{color:var(--accent)}
  .summary-meta{color:var(--muted);font-size:12px;font-weight:400;white-space:nowrap}
  .attempt-fold{border-bottom:1px solid var(--line)}
  .attempt-fold>summary{display:flex;justify-content:space-between;padding:.7rem .2rem;color:var(--fg);font-weight:600}
@@ -132,6 +134,11 @@ PAGE = Template(
  .legend b{display:inline-block;min-width:1.2em}
  footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--line);
    color:var(--muted);font-size:12.5px}
+ @media (max-width:640px){
+   body{padding:1.25rem .75rem 3rem}
+   .section-fold>summary{grid-template-columns:auto minmax(0,1fr);font-size:1.05rem}
+   .section-fold>summary .summary-meta{grid-column:2}
+ }
 </style></head><body>
 
 <h1>Faultline — Resilience Report</h1>

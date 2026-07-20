@@ -84,6 +84,7 @@ def test_report_renders_runs_curve_and_breakdown(cfg):
     assert 'id="run-evidence"' in html
     assert 'class="run-card"' in html
     assert "latest attempt open" in html
+    assert "grid-template-columns:auto minmax(0,1fr) auto" in html
     assert "How to read this" not in html
 
 

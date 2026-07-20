@@ -63,6 +63,35 @@ The default demo uses a **scripted agent and deterministic detectors**, so the
 whole loop (break → judge → score → gate → report) runs with **no API key and
 no spend**. Judges can reproduce every number for free.
 
+## Install as a toolkit
+
+Faultline is packaged as a standalone Python CLI. From a checkout, install it
+as a user-level tool:
+
+```bash
+uv tool install .
+faultline --help
+```
+
+To create a distributable artifact for a teammate or release workflow:
+
+```bash
+uv build
+uv tool install dist/faultline-0.1.0-py3-none-any.whl
+```
+
+Then run it from an agent project containing importable adapter functions:
+
+```bash
+cd your-agent-project
+faultline init
+faultline break
+faultline report
+```
+
+The offline toolkit needs no API key. Live planning, judging, and hardening
+are optional integrations enabled with the documented extras and credentials.
+
 ---
 
 ## What you'll see
