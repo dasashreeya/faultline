@@ -57,7 +57,8 @@ make demo-frontier        # deterministic resilience score by fault intensity
 
 `make demo` runs the gauntlet against the bundled support bot and writes a
 self-contained HTML report to
-`examples/support_bot/.faultline/report.html` — open it straight from disk.
+`examples/support_bot/.faultline/report.html` — open it straight from disk and
+select **Presentation view** for a concise browser-first demo.
 
 The default demo uses a **scripted agent and deterministic detectors**, so the
 whole loop (break → judge → score → gate → report) runs with **no API key and
