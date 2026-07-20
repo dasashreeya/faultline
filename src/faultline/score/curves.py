@@ -74,7 +74,8 @@ def curve_svg(
     )
 
     return (
-        f'<svg class="curve" viewBox="0 0 {width} {height}" role="img" '
+        f'<svg class="curve" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        'preserveAspectRatio="xMidYMid meet" role="img" '
         f'aria-label="Resilience Score per hardening attempt" xmlns="http://www.w3.org/2000/svg">'
         f"{grid}{gate_line}{line}{dots}"
         f'<line class="axis" x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{height - pad_b}"/>'

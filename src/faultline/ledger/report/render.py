@@ -55,7 +55,7 @@ PAGE = Template(
  .up{color:var(--ok)} .down{color:var(--no)}
 
  /* chart */
- .curve{width:100%;height:auto;margin:.5rem 0}
+ .curve,.frontier{display:block;width:100%;height:auto;aspect-ratio:12 / 5;margin:.5rem 0}
  .curve .grid{stroke:var(--line);stroke-width:1}
  .curve .axis{stroke:var(--muted);stroke-width:1}
  .curve .line{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round}
@@ -65,7 +65,6 @@ PAGE = Template(
  .curve .tick,.curve .axis-label{fill:var(--muted);font-size:11px}
  .curve .gate{stroke:var(--ok);stroke-width:1.5;stroke-dasharray:5 4;opacity:.8}
  .curve .gate-label{fill:var(--ok);font-size:11px;font-weight:600}
- .frontier{width:100%;height:auto;margin:.5rem 0}
  .frontier .grid{stroke:var(--line);stroke-width:1}
  .frontier .axis{stroke:var(--muted);stroke-width:1}
  .frontier .line{fill:none;stroke:#2f81f7;stroke-width:2.5;stroke-linejoin:round}

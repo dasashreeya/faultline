@@ -97,6 +97,7 @@ def test_report_renders_frontier_chart_and_exact_values(cfg):
 
     assert 'class="frontier"' in html
     assert 'aria-label="Resilience Score by fault intensity"' in html
+    assert 'width="720" height="300"' in html
     assert "100" in html and "20.6" in html
     assert "fault intensity (lambda)" in html
 
@@ -133,6 +134,7 @@ def test_report_escapes_hostile_tool_output():
     assert "<img src=x" not in html
     assert "&lt;script&gt;" in html
     assert '<svg class="curve"' in html  # trusted markup still renders
+    assert 'width="720" height="300"' in html
 
 
 def test_report_handles_empty_ledger(tmp_path):
