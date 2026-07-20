@@ -79,6 +79,10 @@ def test_report_renders_runs_curve_and_breakdown(cfg):
     # one row per run, and no duplicates from a second render
     assert html.count("F3-stale-01") >= len(cfg.seeds)
     assert "Resilience" in html
+    assert 'id="run-evidence"' in html
+    assert 'class="run-card"' in html
+    assert "latest attempt open" in html
+    assert "How to read this" not in html
 
 
 def test_report_renders_frontier_chart_and_exact_values(cfg):

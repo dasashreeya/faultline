@@ -94,12 +94,37 @@ PAGE = Template(
  .bar>span{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--accent)}
  .bar.good>span{background:var(--ok)}
 
- /* run detail */
+ /* navigation and expandable evidence */
+ .jump-links{display:flex;flex-wrap:wrap;gap:.45rem;margin:1.25rem 0 2rem}
+ .jump-links a{color:var(--fg);border:1px solid var(--line);border-radius:999px;
+   padding:.3rem .65rem;text-decoration:none;font-size:12.5px;background:var(--panel)}
+ .jump-links a:hover{border-color:var(--accent);color:var(--accent)}
  details{margin:0}
  details>summary{cursor:pointer;color:var(--muted);font-size:12.5px;list-style:none}
  details>summary::-webkit-details-marker{display:none}
  details>summary::before{content:"▸ ";}
  details[open]>summary::before{content:"▾ ";}
+ .section-fold{margin:2.5rem 0 0;border-top:1px solid var(--line)}
+ .section-fold>summary{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;
+   padding:.85rem 0;color:var(--fg);font-size:1.2rem;font-weight:650}
+ .section-fold>summary::before{color:var(--accent);font-size:1rem}
+ .section-fold>summary small{font-size:.85em}
+ .summary-meta{color:var(--muted);font-size:12px;font-weight:400;white-space:nowrap}
+ .attempt-fold{border-bottom:1px solid var(--line)}
+ .attempt-fold>summary{display:flex;justify-content:space-between;padding:.7rem .2rem;color:var(--fg);font-weight:600}
+ .run-list{display:grid;gap:.5rem;margin:.1rem 0 1rem}
+ .run-card{border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+ .run-card>summary{display:flex;align-items:center;flex-wrap:wrap;gap:.45rem;padding:.65rem .75rem;color:var(--fg)}
+ .run-card>summary::before{color:var(--accent)}
+ .grade-pill{display:inline-grid;place-items:center;width:1.5rem;height:1.5rem;border-radius:50%;
+   background:var(--line);font-weight:800;font-size:12px}
+ .grade-pill.A{background:var(--a);color:#fff}.grade-pill.B,.grade-pill.C{background:var(--b);color:#fff}
+ .grade-pill.D,.grade-pill.E{background:var(--d);color:#fff}
+ .run-fault{color:var(--muted);font-size:12.5px}
+ .run-body{border-top:1px solid var(--line);padding:.7rem .8rem .8rem}
+ .run-body p{margin:.15rem 0 .6rem}
+ .run-body .reasoning{font-size:13.5px}
+ .run-body .hypothesis{color:var(--muted);font-size:12.5px}
  pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;
    padding:.7rem;overflow-x:auto;font-size:12px;line-height:1.45;margin:.5rem 0 0;
    max-height:340px}
@@ -113,6 +138,15 @@ PAGE = Template(
 <h1>Faultline — Resilience Report</h1>
 <p class="sub">Chaos engineering that fixes what it breaks. Deterministic gauntlet:
 every run below is reproducible from its <code>(scenario, seed)</code>.</p>
+
+<nav class="jump-links" aria-label="Report sections">
+  <a href="#survival">Score history</a>
+  <a href="#frontier">Fault intensity</a>
+  <a href="#heat-map">Fault classes</a>
+  <a href="#grades">Grades</a>
+  <a href="#run-evidence">Run evidence</a>
+  <a href="#patches">Patch ledger</a>
+</nav>
 
 <div class="tiles">
   <div class="tile"><div class="k">Latest score</div>
@@ -128,10 +162,10 @@ every run below is reproducible from its <code>(scenario, seed)</code>.</p>
   <div class="tile"><div class="k">Runs graded</div><div class="v">{{ runs | length }}</div></div>
 </div>
 
-<h2>Survival curve <small>— Resilience Score per hardening attempt</small></h2>
+<h2 id="survival">Survival curve <small>— Resilience Score per hardening attempt</small></h2>
 {{ svg | safe }}
 
-<h2>Resilience frontier <small>— score as fault intensity increases</small></h2>
+<h2 id="frontier">Resilience frontier <small>— score as fault intensity increases</small></h2>
 <p class="sub" style="margin:.5rem 0 0">Fault intensity (lambda) is the deterministic
 fraction of scheduled faults activated. A healthy agent stays above the gate as
 chaos increases; the values below are the exact data behind the chart.</p>
@@ -150,7 +184,7 @@ chaos increases; the values below are the exact data behind the chart.</p>
 </tbody></table></div>
 {% endif %}
 
-<h2>Fault-class heat map <small>— latest attempt, and what each class contributes</small></h2>
+<h2 id="heat-map">Fault-class heat map <small>— latest attempt, and what each class contributes</small></h2>
 {% if breakdown %}
 <div class="scroll"><table>
 <thead><tr><th>Class</th><th>Fault surface</th><th class="num">Scenarios</th>
@@ -170,7 +204,7 @@ chaos increases; the values below are the exact data behind the chart.</p>
 production killers, so they dominate the score.</small></p>
 {% else %}<p class="empty">No scored runs yet.</p>{% endif %}
 
-<h2>Grade distribution <small>— the manner of failure, not just pass/fail</small></h2>
+<h2 id="grades">Grade distribution <small>— the manner of failure, not just pass/fail</small></h2>
 {% if grade_counts %}
 <div class="scroll"><table>
 <thead><tr><th>Grade</th><th>Meaning</th><th class="num">Weight</th><th class="num">Runs (latest)</th></tr></thead>
@@ -183,30 +217,39 @@ production killers, so they dominate the score.</small></p>
 </tbody></table></div>
 {% else %}<p class="empty">No graded runs yet.</p>{% endif %}
 
-<h2>Runs <small>— expand any row for the injected fault, transcript, and end state</small></h2>
-{% if runs %}
-<div class="scroll"><table>
-<thead><tr><th class="num">Attempt</th><th>Scenario</th><th class="num">Seed</th><th>Injected fault</th>
-<th>Grade</th><th>Judge reasoning &amp; evidence</th></tr></thead>
-<tbody>
-{% for r in runs %}
-<tr>
-  <td class="num">{{ r.attempt }}</td>
-  <td><code>{{ r.scenario_id }}</code></td>
-  <td class="num">{{ r.seed }}</td>
-  <td>{% if r.fault %}<code>{{ r.fault }}</code><br><small>{{ r.fault_class }} · {{ r.fault_desc }}</small>
-      {% else %}<small>none (golden)</small>{% endif %}</td>
-  <td class="{{ r.grade }}">{{ r.grade }}</td>
-  <td>{{ r.reasoning }}
-    {% if r.hypothesis %}<br><small><b>Planner predicted:</b> {{ r.hypothesis }}</small>{% endif %}
-    <details><summary>evidence</summary><pre>{{ r.evidence }}</pre></details>
-  </td>
-</tr>
+<details id="run-evidence" class="section-fold">
+<summary><span>Run evidence <small>— expand an attempt and then any run for full reasoning</small></span>
+  <span class="summary-meta">{{ runs | length }} runs · latest attempt open</span></summary>
+{% if run_groups %}
+{% for group in run_groups %}
+<details class="attempt-fold" {% if loop.last %}open{% endif %}>
+<summary><span>Attempt {{ group.attempt }}</span><span class="summary-meta">{{ group.runs | length }} runs</span></summary>
+<div class="run-list">
+{% for r in group.runs %}
+<details class="run-card">
+<summary>
+  <span class="grade-pill {{ r.grade }}">{{ r.grade }}</span>
+  <code>{{ r.scenario_id }}</code>
+  {% if r.fault %}<span class="run-fault">{{ r.fault }}</span>{% else %}<span class="run-fault">golden path</span>{% endif %}
+  <span class="summary-meta">seed {{ r.seed }}</span>
+</summary>
+<div class="run-body">
+  <p class="reasoning"><b>Judge:</b> {{ r.reasoning }}</p>
+  {% if r.hypothesis %}<p class="hypothesis"><b>Planner predicted:</b> {{ r.hypothesis }}</p>{% endif %}
+  {% if r.fault %}<p class="hypothesis"><b>Fault surface:</b> {{ r.fault_class }} · {{ r.fault_desc }}</p>{% endif %}
+  <details><summary>Full evidence, transcript, and end state</summary><pre>{{ r.evidence }}</pre></details>
+</div>
+</details>
 {% endfor %}
-</tbody></table></div>
+</div>
+</details>
+{% endfor %}
 {% else %}<p class="empty">No runs recorded — run <code>faultline break</code>.</p>{% endif %}
+</details>
 
-<h2>Patch ledger <small>— discarded attempts included; honesty is a feature</small></h2>
+<details id="patches" class="section-fold">
+<summary><span>Patch ledger <small>— discarded attempts included; honesty is a feature</small></span>
+  <span class="summary-meta">{{ patches | length }} attempts</span></summary>
 {% if patches %}
 <div class="scroll"><table>
 <thead><tr><th class="num">Attempt</th><th>Scenario</th><th>Verdict</th><th>Why</th><th>Patch summary</th></tr></thead>
@@ -224,13 +267,7 @@ check (a patch that lowers the score is reverted).</small></p>
 {% else %}
 <p class="empty">No hardening attempts yet — run <code>faultline harden</code>.</p>
 {% endif %}
-
-<h2>How to read this</h2>
-<ul class="legend">
-{% for g, meaning in grade_meaning.items() %}
-<li><b class="{{ g }}">{{ g }}</b> {{ meaning }}</li>
-{% endfor %}
-</ul>
+</details>
 
 <footer>
 Generated by Faultline. Faults are injected below the agent framework on the tool
@@ -283,6 +320,13 @@ def _run_rows(runs: list[dict]) -> list[dict]:
     return rows
 
 
+def _group_runs(rows: list[dict]) -> list[dict]:
+    groups: dict[int, list[dict]] = {}
+    for row in rows:
+        groups.setdefault(row["attempt"], []).append(row)
+    return [{"attempt": attempt, "runs": grouped} for attempt, grouped in groups.items()]
+
+
 def render_report(
     ledger: Ledger, gate: float = 85.0, frontier: list[dict] | None = None
 ) -> str:
@@ -301,6 +345,7 @@ def render_report(
         g = r["judge"]["grade"]
         grade_counts[g] = grade_counts.get(g, 0) + 1
 
+    run_rows = _run_rows(runs)
     return PAGE.render(
         svg=curve_svg(survival_curve(ledger), gate=gate),
         frontier=frontier or [],
@@ -310,7 +355,8 @@ def render_report(
         baseline_rs=baseline_rs,
         delta=delta,
         passed=latest_rs is not None and latest_rs >= gate,
-        runs=_run_rows(runs),
+        runs=run_rows,
+        run_groups=_group_runs(run_rows),
         breakdown=class_breakdown(latest_runs) if latest_runs else [],
         grade_counts=grade_counts,
         grade_meaning=GRADE_MEANING,
