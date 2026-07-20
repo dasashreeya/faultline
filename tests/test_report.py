@@ -81,6 +81,22 @@ def test_report_renders_runs_curve_and_breakdown(cfg):
     assert "Resilience" in html
 
 
+def test_report_renders_frontier_chart_and_exact_values(cfg):
+    asyncio.run(run_gauntlet(cfg, attempt=0))
+    ledger = Ledger(cfg.state_dir / "ledger.sqlite3")
+    frontier = [
+        {"intensity": 0.0, "resilience_score": 100.0, "critical_failures": 0, "faulted_runs": 0, "total_runs": 8},
+        {"intensity": 1.0, "resilience_score": 20.6, "critical_failures": 6, "faulted_runs": 8, "total_runs": 8},
+    ]
+
+    html = render_report(ledger, gate=85.0, frontier=frontier)
+
+    assert 'class="frontier"' in html
+    assert 'aria-label="Resilience Score by fault intensity"' in html
+    assert "100" in html and "20.6" in html
+    assert "fault intensity (lambda)" in html
+
+
 def test_report_escapes_hostile_tool_output():
     """Transcripts embed raw tool results — including the F5 adversarial
     instruction. Markup in a tool result must not be able to inject into the
@@ -121,3 +137,4 @@ def test_report_handles_empty_ledger(tmp_path):
     html = render_report(ledger, gate=85.0)
     assert "<html" in html
     assert "faultline break" in html
+    assert "faultline frontier" in html

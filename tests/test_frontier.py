@@ -67,3 +67,10 @@ def test_frontier_cli_writes_json_without_loading_a_stale_plan(cfg):
     assert payload["plan"] is None
     assert payload["intensities"][0]["resilience_score"] == 100.0
     assert payload["intensities"][1]["resilience_score"] == 28.8
+
+    report = runner.invoke(app, ["report", "--path", str(cfg.root)])
+    assert report.exit_code == 0, report.stdout
+    html = (cfg.root / ".faultline" / "report.html").read_text()
+    assert 'class="frontier"' in html
+    assert 'aria-label="Resilience Score by fault intensity"' in html
+    assert "28.8" in html

@@ -27,7 +27,7 @@ demo-trip:
 demo-mcp:
 	uv run python -m examples.mcp_research.demo --fault stale_data
 
-# Backend frontier artifact; the visual report polish is intentionally left to the demo pass.
+# Frontier artifact plus the static report's resilience chart.
 demo-frontier:
 	uv run faultline plan --path examples/support_bot
 	uv run faultline frontier --path examples/support_bot

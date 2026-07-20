@@ -10,6 +10,7 @@ from faultline.faults.scheduler import resolve_fault
 from faultline.judge.rubric import GRADE_WEIGHTS
 from faultline.ledger.store import Ledger
 from faultline.score.curves import curve_svg, survival_curve
+from faultline.score.frontier import frontier_svg
 from faultline.score.resilience import class_breakdown
 
 GRADE_MEANING = {
@@ -64,6 +65,16 @@ PAGE = Template(
  .curve .tick,.curve .axis-label{fill:var(--muted);font-size:11px}
  .curve .gate{stroke:var(--ok);stroke-width:1.5;stroke-dasharray:5 4;opacity:.8}
  .curve .gate-label{fill:var(--ok);font-size:11px;font-weight:600}
+ .frontier{width:100%;height:auto;margin:.5rem 0}
+ .frontier .grid{stroke:var(--line);stroke-width:1}
+ .frontier .axis{stroke:var(--muted);stroke-width:1}
+ .frontier .line{fill:none;stroke:#2f81f7;stroke-width:2.5;stroke-linejoin:round}
+ .frontier .area{fill:#2f81f7;opacity:.10}
+ .frontier .dot{fill:#2f81f7}
+ .frontier .value{fill:var(--fg);font-size:12px;font-weight:600}
+ .frontier .tick,.frontier .axis-label{fill:var(--muted);font-size:11px}
+ .frontier .gate{stroke:var(--ok);stroke-width:1.5;stroke-dasharray:5 4;opacity:.8}
+ .frontier .gate-label{fill:var(--ok);font-size:11px;font-weight:600}
 
  /* tables */
  .scroll{overflow-x:auto}
@@ -119,6 +130,25 @@ every run below is reproducible from its <code>(scenario, seed)</code>.</p>
 
 <h2>Survival curve <small>— Resilience Score per hardening attempt</small></h2>
 {{ svg | safe }}
+
+<h2>Resilience frontier <small>— score as fault intensity increases</small></h2>
+<p class="sub" style="margin:.5rem 0 0">Fault intensity (lambda) is the deterministic
+fraction of scheduled faults activated. A healthy agent stays above the gate as
+chaos increases; the values below are the exact data behind the chart.</p>
+{{ frontier_chart | safe }}
+{% if frontier %}
+<div class="scroll"><table>
+<thead><tr><th>Intensity</th><th class="num">Resilience Score</th>
+<th class="num">Critical failures</th><th class="num">Faulted runs</th></tr></thead>
+<tbody>
+{% for point in frontier %}
+<tr><td>{{ '%.2f' | format(point.intensity) }}</td>
+<td class="num">{{ point.resilience_score }}</td>
+<td class="num">{{ point.critical_failures }}</td>
+<td class="num">{{ point.faulted_runs }}/{{ point.total_runs }}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endif %}
 
 <h2>Fault-class heat map <small>— latest attempt, and what each class contributes</small></h2>
 {% if breakdown %}
@@ -253,7 +283,9 @@ def _run_rows(runs: list[dict]) -> list[dict]:
     return rows
 
 
-def render_report(ledger: Ledger, gate: float = 85.0) -> str:
+def render_report(
+    ledger: Ledger, gate: float = 85.0, frontier: list[dict] | None = None
+) -> str:
     scores = ledger.scores()
     runs: list[dict] = []
     for attempt, _ in scores:
@@ -271,6 +303,8 @@ def render_report(ledger: Ledger, gate: float = 85.0) -> str:
 
     return PAGE.render(
         svg=curve_svg(survival_curve(ledger), gate=gate),
+        frontier=frontier or [],
+        frontier_chart=frontier_svg(frontier or [], gate=gate),
         gate=gate,
         latest_rs=latest_rs,
         baseline_rs=baseline_rs,

@@ -406,7 +406,16 @@ def report(path: Path = PathOpt) -> None:
     cfg = _load(path)
     out = cfg.state_dir / "report.html"
     ledger = Ledger(cfg.state_dir / "ledger.sqlite3")
-    out.write_text(render_report(ledger, gate=cfg.gate_min_score), encoding="utf-8")
+    from faultline.score.frontier import load_frontier
+
+    out.write_text(
+        render_report(
+            ledger,
+            gate=cfg.gate_min_score,
+            frontier=load_frontier(cfg.state_dir / "frontier.json"),
+        ),
+        encoding="utf-8",
+    )
     console.print(f"report → [bold]{out}[/bold]")
 
 

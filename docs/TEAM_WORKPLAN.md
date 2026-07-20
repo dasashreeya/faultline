@@ -41,7 +41,7 @@ the agent's final text alone.
 
 Current verified facts:
 
-- `uv run pytest -q`: 128 offline tests pass on merged local `main` plus the frontier backend.
+- `uv run pytest -q`: 129 offline tests pass on merged local `main` plus the frontier backend and static report chart.
 - `make demo`: plan -> break -> report works without an API key.
 - The clean support-bot baseline is `20.6/100` with the curated attack plan.
 - Codex structured output and the gatekeeper can be exercised live.
@@ -156,7 +156,7 @@ SUBMISSION_STATE.md
 
 Do not spend the current cycle on:
 
-- interactive resilience frontier charts (the deterministic JSON backend is now implemented; presentation remains);
+- interactive resilience frontier charts (the deterministic JSON backend and static report presentation are implemented; user demo narration remains);
 - public leaderboard or certification badge;
 - multi-agent cascade faults;
 - a third example agent;
