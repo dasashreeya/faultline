@@ -8,6 +8,7 @@
   "properties": {
     "scenario_id": { "type": "string" },
     "seed": { "type": "integer" },
+    "potential_fault": { "type": "string", "description": "Fault selected for a frontier point when injection was skipped" },
     "entries": {
       "type": "array",
       "items": {

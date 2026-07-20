@@ -1,6 +1,6 @@
 # Faultline Submission State
 
-Last updated: 2026-07-15
+Last updated: 2026-07-19
 
 ## Provenance And Session
 
@@ -44,7 +44,8 @@ Last updated: 2026-07-15
 | Ledger integrity | Fixed: re-running an attempt used to append a duplicate set of runs (fresh uuid per run defeated `INSERT OR REPLACE`), which would have corrupted the survival curve during the harden loop. `clear_attempt` now makes an attempt a true re-run. |
 | Windows support | Fixed: `break`/`report` use UTF-8, and the Codex wrapper restores the elevated Windows workspace-write sandbox after `--ignore-user-config`. |
 | Codex hardening loop | Live verified and accepted. Three gatekeeper commits raised the curated support-bot score `20.6 → 41.2 → 64.7 → 100.0`; a later no-op was rejected at `100.0 → 100.0`. |
-| Tests | 123 tests, all offline, all green. |
+| Resilience frontier backend | Implemented. `faultline frontier` runs deterministic clean-to-full fault probabilities without touching the hardening ledger and writes `.faultline/frontier.json`. The visual report treatment and demo narration are tomorrow's user-facing handoff. |
+| Tests | 128 tests, all offline, all green. |
 
 ## P0 Acceptance Verification (2026-07-15)
 
@@ -69,7 +70,7 @@ the equivalent venv entrypoint was invoked directly:
 | Golden path | Passed before every accepted commit; final `faultline gate --min-score 85` passed at `100.0`. |
 | Rejected/no-op provenance | Real Codex attempt 4 rejected and reverted at `100.0 → 100.0`; retained in the patch ledger/report. |
 | Survival curve/report | `20.6 → 41.2 → 64.7 → 100.0 → 100.0`; rendered to `examples/support_bot/.faultline/report.html`. |
-| Offline regression suite | `123 passed` after integrating the Workstream A safeguards, demo-fixture regression, LangGraph tool-calling compatibility regression, and raw-MCP example coverage. |
+| Offline regression suite | `128 passed` after adding deterministic frontier intensity and CLI coverage. |
 
 Two convergence defects were fixed during the run: Windows `--ignore-user-config`
 had silently reduced Codex to a read-only sandbox, and the gate was reusing the
@@ -138,6 +139,6 @@ make demo-harden
 | Working project | Offline path, Path B live integrations, and accepted score-improving Codex hardening are verified. |
 | README | Updated with status, roadmap, demo script, and checklist. |
 | Repository URL | https://github.com/dasashreeya/faultline |
-| Demo video | TODO. Show break -> plan/report -> Codex harden -> improved report. |
+| Demo video | Tomorrow's handoff: show break -> plan/report -> Codex harden -> improved report, then add the frontier JSON/chart as the new breadth signal. |
 | `/feedback` Codex session ID | `019f610b-2665-7f51-9f4a-c13a7e700e8e` |
 | Code license | MIT license present. |

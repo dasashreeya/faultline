@@ -48,7 +48,12 @@ def attack_for(plan: dict | None, scenario_id: str) -> dict | None:
     return min(attacks, key=lambda a: (int(a.get("rank", 10**6)), str(a.get("fault", ""))))
 
 
-def build_schedule(scenario: dict, seed: int, attack: dict | None = None) -> dict:
+def build_schedule(
+    scenario: dict,
+    seed: int,
+    attack: dict | None = None,
+    intensity: float = 1.0,
+) -> dict:
     """Return a FaultSchedule (schemas/fault_schedule.schema.json).
 
     Scenario knobs: `fault_pool` (allowed fault ids), `fault_targets`
@@ -60,6 +65,9 @@ def build_schedule(scenario: dict, seed: int, attack: dict | None = None) -> dic
     chaos rather than just describe it. The seed still selects everything the
     plan left unspecified, so a planned gauntlet is just as reproducible.
     """
+    if not 0.0 <= intensity <= 1.0:
+        raise ValueError("fault intensity must be between 0 and 1")
+
     rng = _rng(seed, scenario["id"])
     pool_ids = list(scenario.get("fault_pool", TIER0_FAULTS))
     pool: list[Fault] = [f for f in (resolve_fault(fid) for fid in pool_ids) if f is not None]
@@ -88,6 +96,17 @@ def build_schedule(scenario: dict, seed: int, attack: dict | None = None) -> dic
     surface = fault_surface(fault.id)
     if surface == "llm":
         target = "llm"
+
+    # A frontier point keeps the potential fault in the schedule metadata even
+    # when the Bernoulli draw skips injection. This lets the scorer classify a
+    # clean run against the fault it was meant to survive.
+    if intensity < 1.0 and (intensity == 0.0 or rng.random() >= intensity):
+        return {
+            "scenario_id": scenario["id"],
+            "seed": seed,
+            "potential_fault": fault.id,
+            "entries": [],
+        }
 
     return {
         "scenario_id": scenario["id"],

@@ -1,6 +1,7 @@
 """Faultline CLI. The demo *is* the terminal."""
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -227,6 +228,59 @@ def eval_plan(
         )
 
 
+@app.command()
+def frontier(
+    path: Path = PathOpt,
+    intensities: str = typer.Option(
+        "0,0.25,0.5,0.75,1",
+        "--intensities",
+        help="Comma-separated fault probabilities from 0 to 1",
+    ),
+    output: Path | None = typer.Option(None, "--output", help="Write frontier JSON here"),
+    use_plan: bool = typer.Option(
+        True,
+        "--plan/--no-plan",
+        help="Aim faults with attack_plan.json when present",
+    ),
+) -> None:
+    """Measure Resilience Score as deterministic fault intensity increases."""
+    from faultline.run.gauntlet import load_plan_if_any
+    from faultline.score.frontier import run_frontier, validate_intensities
+
+    cfg = _load(path)
+    try:
+        values = validate_intensities(intensities.split(","))
+    except ValueError as exc:
+        console.print(f"[red]invalid intensities:[/red] {exc}")
+        raise typer.Exit(2) from exc
+
+    plan = load_plan_if_any(cfg) if use_plan else {}
+    points = asyncio.run(run_frontier(cfg, values, plan=plan))
+    out = output or cfg.state_dir / "frontier.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(
+        json.dumps(
+            {"intensities": points, "plan": plan.get("generated_by") if plan else None},
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    table = Table(title="Faultline resilience frontier")
+    for col in ("intensity", "resilience score", "critical failures", "faulted runs"):
+        table.add_column(col, justify="right")
+    for point in points:
+        table.add_row(
+            f"{point['intensity']:.2f}",
+            f"{point['resilience_score']:.1f}",
+            str(point["critical_failures"]),
+            f"{point['faulted_runs']}/{point['total_runs']}",
+        )
+    console.print(table)
+    console.print(f"frontier -> [bold]{out}[/bold]")
+
+
 @app.command(name="break")
 def break_(
     path: Path = PathOpt,
@@ -241,7 +295,7 @@ def break_(
     from faultline.run.gauntlet import load_plan_if_any, run_gauntlet
 
     cfg = _load(path)
-    plan = load_plan_if_any(cfg) if use_plan else None
+    plan = load_plan_if_any(cfg) if use_plan else {}
     if plan:
         console.print(
             f"[dim]aiming faults with attack plan ({plan.get('generated_by', '?')}) "

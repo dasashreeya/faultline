@@ -23,6 +23,7 @@ async def run_one(
     attempt: int,
     schedule: dict | None = None,
     plan: dict | None = None,
+    intensity: float = 1.0,
 ) -> dict:
     """One faulted run. Pass schedule={'entries': []} for a fault-free golden run."""
 
@@ -38,7 +39,7 @@ async def run_one(
     reset_backend(db_path)
     attack = attack_for(plan, scenario["id"])
     if schedule is None:
-        schedule = build_schedule(scenario, seed, attack=attack)
+        schedule = build_schedule(scenario, seed, attack=attack, intensity=intensity)
     transcript = Transcript()
     tools = wrap_tools(build_tools(db_path), schedule, transcript)
 
@@ -99,6 +100,7 @@ async def run_gauntlet(
     on_run=None,
     plan: dict | None = None,
     persist: bool = True,
+    intensity: float = 1.0,
 ) -> tuple[float, list[dict]]:
     """Full gauntlet for one attempt. Persists runs + score; returns (RS, records).
 
@@ -118,9 +120,11 @@ async def run_gauntlet(
             if cfg.isolation == "subprocess":
                 from faultline.run.sandbox import run_one_subprocess
 
-                rec = await run_one_subprocess(cfg, scenario, seed, attempt, plan=plan)
+                rec = await run_one_subprocess(
+                    cfg, scenario, seed, attempt, plan=plan, intensity=intensity
+                )
             else:
-                rec = await run_one(cfg, scenario, seed, attempt, plan=plan)
+                rec = await run_one(cfg, scenario, seed, attempt, plan=plan, intensity=intensity)
             if ledger:
                 ledger.add_run(rec)
             records.append(rec)

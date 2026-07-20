@@ -1,4 +1,4 @@
-.PHONY: setup test demo demo-eval demo-trip demo-mcp demo-harden lint
+.PHONY: setup test demo demo-eval demo-trip demo-mcp demo-frontier demo-harden lint
 
 setup:
 	uv sync
@@ -26,6 +26,11 @@ demo-trip:
 # Raw JSON-RPC research agent through the MCP interceptor, fully offline.
 demo-mcp:
 	uv run python -m examples.mcp_research.demo --fault stale_data
+
+# Backend frontier artifact; the visual report polish is intentionally left to the demo pass.
+demo-frontier:
+	uv run faultline plan --path examples/support_bot
+	uv run faultline frontier --path examples/support_bot
 
 # The full loop (needs `codex` CLI authed; flip judge.mode/agent in
 # examples/support_bot/faultline.yaml for the LLM judge + SDK agent).

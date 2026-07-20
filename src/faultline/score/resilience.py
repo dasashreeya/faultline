@@ -21,7 +21,9 @@ CLASS_LABELS = {
 
 
 def _run_fault_class(record: dict) -> str:
-    fault_id = record["fault_schedule"]["entries"][0]["fault"]
+    schedule = record["fault_schedule"]
+    entries = schedule.get("entries", [])
+    fault_id = entries[0]["fault"] if entries else schedule.get("potential_fault")
     fault = resolve_fault(fault_id)
     return fault.fault_class if fault else "F3"
 

@@ -49,9 +49,10 @@ Prerequisites: Python 3.11+ and [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run pytest -q          # 123 tests, all offline
+uv run pytest -q          # 128 tests, all offline
 make demo                 # plan → break → report
 make demo-mcp             # raw MCP JSON-RPC → inject stale data → observe write
+make demo-frontier        # deterministic resilience score by fault intensity
 ```
 
 `make demo` runs the gauntlet against the bundled support bot and writes a
@@ -179,6 +180,7 @@ faultline harden                # the Codex loop: dossier → patch → gate →
 faultline report                # static HTML: curve, heat map, runs, patch ledger
 faultline gate --min-score 85   # CI gate; exits non-zero below the threshold
 faultline faults                # list the fault library across every surface
+faultline frontier              # write .faultline/frontier.json by intensity
 faultline serve-proxy           # OpenAI-compatible fault-injecting proxy (live agents)
 ```
 
@@ -372,7 +374,7 @@ That's the gap Faultline owns — and the welding metal is Codex.
 The offline core is complete and test-covered: plan, eval-plan, break, judge,
 score, report, gate, subprocess isolation, all three injection surfaces (tool,
 LLM proxy, MCP proxy), all three examples, plus the Codex hardener and
-gatekeeper plumbing. 123 tests, all green, no API key required for the offline suite.
+gatekeeper plumbing. 128 tests, all green, no API key required for the offline suite.
 
 The live paths (GPT-5.6 planner/judge/anti-cheat, `codex exec` hardening) are
 implemented, opt-in, and credential-verified. GPT planning emitted a strict

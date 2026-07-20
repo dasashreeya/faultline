@@ -65,3 +65,27 @@ def test_planned_llm_attack_aims_the_surface():
     assert entry["fault"] == "llm_server_error"
     assert entry["surface"] == "llm"
     assert entry["step"] == 2
+
+
+def test_intensity_zero_skips_injection_but_preserves_potential_fault():
+    scenario = {
+        "id": "F3-intensity",
+        "tools": ["lookup_orders"],
+        "fault_pool": ["stale_data"],
+        "fault_targets": ["lookup_orders"],
+    }
+    schedule = build_schedule(scenario, seed=3, intensity=0.0)
+
+    assert schedule["entries"] == []
+    assert schedule["potential_fault"] == "stale_data"
+
+
+def test_full_intensity_matches_default_schedule():
+    scenario = {
+        "id": "F3-intensity",
+        "tools": ["lookup_orders"],
+        "fault_pool": ["stale_data"],
+        "fault_targets": ["lookup_orders"],
+    }
+
+    assert build_schedule(scenario, seed=3) == build_schedule(scenario, seed=3, intensity=1.0)

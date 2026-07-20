@@ -31,6 +31,7 @@ def _child_run_one(
     attempt: int,
     schedule: dict[str, Any] | None,
     plan: dict[str, Any] | None,
+    intensity: float,
     out: mp.Queue,
 ) -> None:
     try:
@@ -40,7 +41,15 @@ def _child_run_one(
 
         cfg = load_config(Path(cfg_root))
         record = asyncio.run(
-            run_one(cfg, scenario, seed, attempt, schedule=schedule, plan=plan)
+            run_one(
+                cfg,
+                scenario,
+                seed,
+                attempt,
+                schedule=schedule,
+                plan=plan,
+                intensity=intensity,
+            )
         )
         out.put({"record": record})
     except Exception:
@@ -54,15 +63,18 @@ async def run_one_subprocess(
     attempt: int,
     schedule: dict | None = None,
     plan: dict | None = None,
+    intensity: float = 1.0,
 ) -> dict[str, Any]:
     """Run one faulted scenario in a killable child process."""
 
     result = await asyncio.to_thread(
-        _run_one_subprocess_sync, cfg, scenario, seed, attempt, schedule, plan
+        _run_one_subprocess_sync, cfg, scenario, seed, attempt, schedule, plan, intensity
     )
     if "record" in result:
         return result["record"]
-    return await _infra_failure_record(cfg, scenario, seed, attempt, schedule, result["error"])
+    return await _infra_failure_record(
+        cfg, scenario, seed, attempt, schedule, result["error"], intensity=intensity
+    )
 
 
 def _run_one_subprocess_sync(
@@ -72,6 +84,7 @@ def _run_one_subprocess_sync(
     attempt: int,
     schedule: dict | None,
     plan: dict | None = None,
+    intensity: float = 1.0,
 ) -> dict[str, Any]:
     ctx = mp.get_context("spawn")
     out: mp.Queue = ctx.Queue()
@@ -85,6 +98,7 @@ def _run_one_subprocess_sync(
             attempt,
             schedule,
             plan,
+            intensity,
             out,
         ),
     )
@@ -110,8 +124,9 @@ async def _infra_failure_record(
     attempt: int,
     schedule: dict | None,
     error: str,
+    intensity: float = 1.0,
 ) -> dict[str, Any]:
-    schedule = schedule or build_schedule(scenario, seed)
+    schedule = schedule or build_schedule(scenario, seed, intensity=intensity)
     transcript = [{"type": "exception", "content": error[-4000:]}]
     db_path = str(cfg.state_dir / f"backend-{scenario['id']}-s{seed}.sqlite3")
     snapshot = {}
