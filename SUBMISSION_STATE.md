@@ -45,7 +45,7 @@ Last updated: 2026-07-19
 | Windows support | Fixed: `break`/`report` use UTF-8, and the Codex wrapper restores the elevated Windows workspace-write sandbox after `--ignore-user-config`. |
 | Codex hardening loop | Live verified and accepted. Three gatekeeper commits raised the curated support-bot score `20.6 → 41.2 → 64.7 → 100.0`; a later no-op was rejected at `100.0 → 100.0`. |
 | Resilience frontier backend | Implemented. `faultline frontier` runs deterministic clean-to-full fault probabilities without touching the hardening ledger, writes `.faultline/frontier.json`, and renders the frontier chart plus exact-value table in the static report. Demo narration remains tomorrow's user-facing handoff. |
-| Tests | 129 tests, all offline, all green. |
+| Tests | 130 tests, all offline, all green. |
 
 ## P0 Acceptance Verification (2026-07-15)
 
@@ -70,7 +70,7 @@ the equivalent venv entrypoint was invoked directly:
 | Golden path | Passed before every accepted commit; final `faultline gate --min-score 85` passed at `100.0`. |
 | Rejected/no-op provenance | Real Codex attempt 4 rejected and reverted at `100.0 → 100.0`; retained in the patch ledger/report. |
 | Survival curve/report | `20.6 → 41.2 → 64.7 → 100.0 → 100.0`; rendered to `examples/support_bot/.faultline/report.html`. |
-| Offline regression suite | `129 passed` after adding deterministic frontier intensity, CLI, and static-report coverage. |
+| Offline regression suite | `130 passed` after adding deterministic frontier intensity, CLI, static-report, and dense-chart coverage. |
 
 Two convergence defects were fixed during the run: Windows `--ignore-user-config`
 had silently reduced Codex to a read-only sandbox, and the gate was reusing the

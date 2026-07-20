@@ -41,7 +41,7 @@ the agent's final text alone.
 
 Current verified facts:
 
-- `uv run pytest -q`: 129 offline tests pass on merged local `main` plus the frontier backend and static report chart.
+- `uv run pytest -q`: 130 offline tests pass on merged local `main` plus the frontier backend, static report chart, and dense-history chart coverage.
 - `make demo`: plan -> break -> report works without an API key.
 - The clean support-bot baseline is `20.6/100` with the curated attack plan.
 - Codex structured output and the gatekeeper can be exercised live.

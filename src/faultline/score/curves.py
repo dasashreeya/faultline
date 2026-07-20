@@ -7,6 +7,23 @@ def survival_curve(ledger: Ledger) -> list[dict]:
     return [{"attempt": a, "rs": rs} for a, rs in ledger.scores()]
 
 
+def _spaced_indices(coords: list[tuple[float, float]], minimum_gap: float) -> set[int]:
+    """Choose x-axis labels with enough room to remain legible."""
+
+    if not coords:
+        return set()
+    selected = [0]
+    for index in range(1, len(coords) - 1):
+        if coords[index][0] - coords[selected[-1]][0] >= minimum_gap:
+            selected.append(index)
+    if len(coords) > 1:
+        if coords[-1][0] - coords[selected[-1]][0] < minimum_gap and len(selected) > 1:
+            selected[-1] = len(coords) - 1
+        else:
+            selected.append(len(coords) - 1)
+    return set(selected)
+
+
 def curve_svg(
     points: list[dict], gate: float | None = None, width: int = 720, height: int = 300
 ) -> str:
@@ -25,18 +42,31 @@ def curve_svg(
     def y_of(rs: float) -> float:
         return pad_t + (1 - rs / 100) * plot_h
 
-    xs = [p["attempt"] for p in points]
-    span = max(max(xs) - min(xs), 1)
-
-    def x_of(attempt: int) -> float:
-        return pad_l + (attempt - min(xs)) / span * plot_w
-
     if len(points) == 1:
         # A lone baseline would sit on the y-axis with its label colliding with
         # the axis ticks. Centre it instead.
         coords = [(pad_l + plot_w / 2, y_of(points[0]["rs"]))]
     else:
-        coords = [(x_of(p["attempt"]), y_of(p["rs"])) for p in points]
+        # Attempts are an ordered history, not a continuous numeric axis. Using
+        # their raw IDs can create a huge visual gap when a later run uses an
+        # intentionally distinct attempt number.
+        coords = [
+            (pad_l + index / (len(points) - 1) * plot_w, y_of(point["rs"]))
+            for index, point in enumerate(points)
+        ]
+
+    if len(points) <= 8:
+        value_indices = set(range(len(points)))
+        tick_indices = value_indices
+    else:
+        value_indices = {
+            0,
+            len(points) - 1,
+            len(points) // 2,
+            min(range(len(points)), key=lambda index: points[index]["rs"]),
+            max(range(len(points)), key=lambda index: points[index]["rs"]),
+        }
+        tick_indices = _spaced_indices(coords, minimum_gap=72)
 
     # horizontal gridlines every 25 RS
     grid = "".join(
@@ -67,10 +97,21 @@ def curve_svg(
         line = f'<polygon class="area" points="{area}"/><polyline class="line" points="{pts}"/>'
 
     dots = "".join(
-        f'<circle class="dot" cx="{x:.1f}" cy="{y:.1f}" r="5"/>'
-        f'<text class="value" x="{x:.1f}" y="{y - 12:.1f}" text-anchor="middle">{p["rs"]:g}</text>'
-        f'<text class="tick" x="{x:.1f}" y="{height - pad_b + 18:.1f}" text-anchor="middle">#{p["attempt"]}</text>'
-        for (x, y), p in zip(coords, points)
+        f'<circle class="dot" cx="{x:.1f}" cy="{y:.1f}" r="5">'
+        f'<title>Attempt {p["attempt"]}: resilience score {p["rs"]:g}</title></circle>'
+        + (
+            f'<text class="value" x="{x:.1f}" y="{max(y - 12, 15):.1f}" '
+            f'text-anchor="middle">{p["rs"]:g}</text>'
+            if index in value_indices
+            else ""
+        )
+        + (
+            f'<text class="tick" x="{x:.1f}" y="{height - pad_b + 18:.1f}" '
+            f'text-anchor="middle">#{p["attempt"]}</text>'
+            if index in tick_indices
+            else ""
+        )
+        for index, ((x, y), p) in enumerate(zip(coords, points))
     )
 
     return (

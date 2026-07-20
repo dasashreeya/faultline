@@ -6,6 +6,7 @@ runs inflating the tables, and unescaped tool output corrupting the page.
 """
 
 import asyncio
+import re
 import shutil
 import sqlite3
 import sys
@@ -20,6 +21,7 @@ from faultline.config import load_config  # noqa: E402
 from faultline.ledger.report.render import render_report  # noqa: E402
 from faultline.ledger.store import Ledger  # noqa: E402
 from faultline.run.gauntlet import run_gauntlet  # noqa: E402
+from faultline.score.curves import curve_svg  # noqa: E402
 from faultline.score.resilience import class_breakdown, resilience_score  # noqa: E402
 
 
@@ -100,6 +102,23 @@ def test_report_renders_frontier_chart_and_exact_values(cfg):
     assert 'width="720" height="300"' in html
     assert "100" in html and "20.6" in html
     assert "fault intensity (lambda)" in html
+
+
+def test_survival_curve_limits_labels_for_dense_histories():
+    points = [
+        {"attempt": attempt, "rs": score}
+        for attempt, score in zip(
+            (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 101, 102, 103),
+            (20.6, 43.5, 41.2, 41.2, 41.2, 20.6, 20.6, 100.0, 20.6, 20.6, 20.6, 76.5, 20.6, 20.6),
+        )
+    ]
+
+    svg = curve_svg(points, gate=85.0)
+
+    assert svg.count('<circle class="dot"') == len(points)
+    assert 3 <= len(re.findall(r'<text class="value"', svg)) <= 5
+    assert len(re.findall(r'<text class="tick"[^>]*>#[^<]+</text>', svg)) == 7
+    assert "Attempt 103: resilience score 20.6" in svg
 
 
 def test_report_escapes_hostile_tool_output():
